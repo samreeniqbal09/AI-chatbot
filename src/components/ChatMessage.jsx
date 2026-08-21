@@ -1,6 +1,13 @@
-import { motion } from "motion/react"
-import { Bot, User, Copy, Check } from "lucide-react"
 import { useState } from "react"
+import { motion } from "motion/react"
+import {
+  Bot,
+  User,
+  Copy,
+  Check,
+} from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 function ChatMessage({ message }) {
   const isUser = message.role === "user"
@@ -9,7 +16,6 @@ function ChatMessage({ message }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(message.content)
-
       setCopied(true)
 
       setTimeout(() => {
@@ -22,16 +28,8 @@ function ChatMessage({ message }) {
 
   return (
     <motion.div
-      initial={{
-        opacity: 0,
-        y: 18,
-        scale: 0.98,
-      }}
-      animate={{
-        opacity: 1,
-        y: 0,
-        scale: 1,
-      }}
+      initial={{ opacity: 0, y: 18, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
         duration: 0.35,
         ease: [0.22, 1, 0.36, 1],
@@ -45,46 +43,52 @@ function ChatMessage({ message }) {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.08, duration: 0.25 }}
+          transition={{
+            delay: 0.08,
+            duration: 0.25,
+          }}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"
         >
           <Bot size={18} />
         </motion.div>
       )}
 
-      {/* MESSAGE AREA */}
+      {/* MESSAGE */}
       <div
-        className={`group relative max-w-[80%] ${
-          isUser ? "order-1" : ""
+        className={`group relative ${
+          isUser
+            ? "order-1 max-w-[80%]"
+            : "max-w-[85%]"
         }`}
       >
         <motion.div
-          whileHover={{
-            y: -1,
-          }}
-          transition={{
-            duration: 0.2,
-          }}
-          className={`rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
+          whileHover={{ y: -1 }}
+          transition={{ duration: 0.2 }}
+          className={`rounded-2xl px-4 py-3 shadow-sm ${
             isUser
               ? "rounded-br-md bg-indigo-600 text-white"
               : "rounded-bl-md border border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           }`}
         >
-          <div className="whitespace-pre-wrap break-words">
-            {message.content}
-          </div>
+          {isUser ? (
+            <div className="whitespace-pre-wrap break-words text-sm leading-6">
+              {message.content}
+            </div>
+          ) : (
+            <div className="chat-markdown">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
         </motion.div>
 
-        {/* COPY BUTTON FOR AI RESPONSES */}
+        {/* COPY BUTTON */}
         {!isUser && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0 }}
-            whileHover={{ opacity: 1 }}
+          <button
             onClick={handleCopy}
             title={copied ? "Copied" : "Copy response"}
-            className="absolute -bottom-8 left-1 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="mt-2 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
           >
             {copied ? (
               <>
@@ -97,7 +101,7 @@ function ChatMessage({ message }) {
                 Copy
               </>
             )}
-          </motion.button>
+          </button>
         )}
       </div>
 
@@ -106,7 +110,10 @@ function ChatMessage({ message }) {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.08, duration: 0.25 }}
+          transition={{
+            delay: 0.08,
+            duration: 0.25,
+          }}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-300 bg-gray-100 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
         >
           <User size={18} />
