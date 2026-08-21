@@ -5,17 +5,36 @@ from http.server import BaseHTTPRequestHandler
 from openai import OpenAI
 
 
-API_KEY = os.environ.get("OPENROUTER_API_KEY")
+# ==============================
+# CONFIGURATION
+# ==============================
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=API_KEY,
-)
+API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 TEXT_MODEL = "meta-llama/llama-3.1-8b-instruct"
 VISION_MODEL = "google/gemini-2.5-flash"
 IMAGE_MODEL = "google/gemini-2.5-flash-image"
 
+
+# ==============================
+# OPENROUTER CLIENT
+# ==============================
+
+def get_client():
+    if not API_KEY:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY is not configured."
+        )
+
+    return OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=API_KEY,
+    )
+
+
+# ==============================
+# SYSTEM PROMPT
+# ==============================
 
 SYSTEM_PROMPT = (
     "You are Lumora AI, a professional, helpful and friendly AI assistant. "
@@ -25,14 +44,18 @@ SYSTEM_PROMPT = (
     "For programming questions, explain concepts clearly and provide "
     "clean code when requested. "
     "When analyzing an image, describe what is visible and answer "
-    "the user's question about it accurately. "
+    "the user's question accurately. "
     "Do not repeat the user's question. "
     "Keep answers clear, organized and professional."
 )
 
 
+# ==============================
+# IMAGE REQUEST DETECTION
+# ==============================
+
 def wants_image(question):
-    text = question.lower()
+    text = question.lower().strip()
 
     triggers = (
         "generate an image",
@@ -44,15 +67,32 @@ def wants_image(question):
         "show me an image",
         "show an image",
         "draw an image",
+        "generate a picture",
+        "create a picture",
+        "make a picture",
         "generate a diagram",
         "create a diagram",
         "make a diagram",
+        "draw a diagram",
     )
 
-    return any(trigger in text for trigger in triggers)
+    return any(
+        trigger in text
+        for trigger in triggers
+    )
 
+
+# ==============================
+# IMAGE GENERATION
+# ==============================
 
 def generate_image(prompt):
+
+    if not API_KEY:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY is not configured."
+        )
+
     response = requests.post(
         "https://openrouter.ai/api/v1/images",
         headers={
@@ -66,74 +106,109 @@ def generate_image(prompt):
         timeout=120,
     )
 
+    # Keep the real API error
+    # so debugging is easier.
     if not response.ok:
+        try:
+            error_data = response.json()
+            error_message = error_data.get(
+                "error",
+                error_data
+            )
+        except Exception:
+            error_message = response.text
+
         raise RuntimeError(
-            f"Image generation failed: "
-            f"{response.status_code}"
+            f"Image API error "
+            f"{response.status_code}: "
+            f"{error_message}"
         )
 
     result = response.json()
-    images = result.get("data", [])
+
+    images = result.get("data") or []
 
     if not images:
         raise RuntimeError(
-            "No image was returned."
+            "The image API returned no image."
         )
 
-    image_data = images[0].get("b64_json")
+    first_image = images[0]
+
+    image_data = first_image.get(
+        "b64_json"
+    )
 
     if not image_data:
         raise RuntimeError(
-            "Image data was not returned."
+            "The image API did not return image data."
         )
 
-    media_type = images[0].get(
+    media_type = first_image.get(
         "media_type",
         "image/png"
     )
 
-    return f"data:{media_type};base64,{image_data}"
+    return (
+        f"data:{media_type};base64,"
+        f"{image_data}"
+    )
 
+
+# ==============================
+# API HANDLER
+# ==============================
 
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
+
         try:
+
             content_length = int(
                 self.headers.get(
                     "Content-Length",
-                    0
+                    "0"
                 )
             )
 
-            body = self.rfile.read(content_length)
+            body = self.rfile.read(
+                content_length
+            )
+
             data = json.loads(body)
 
-            question = data.get(
-                "question",
-                ""
+            question = str(
+                data.get("question") or ""
             ).strip()
 
             image = data.get("image")
 
+            # ==========================
+            # EMPTY REQUEST
+            # ==========================
+
             if not question and not image:
+
                 self.send_json(
                     {
                         "answer": (
                             "Please enter a message "
                             "or add an image."
-                        )
+                        ),
+                        "image": None,
                     },
                     400,
                 )
+
                 return
 
-            # ---------------------------------
+            # ==========================
             # IMAGE GENERATION
-            # Only runs when explicitly requested
-            # ---------------------------------
+            # ==========================
 
             if question and wants_image(question):
+
                 generated_image = generate_image(
                     question
                 )
@@ -148,14 +223,31 @@ class handler(BaseHTTPRequestHandler):
                     },
                     200,
                 )
+
                 return
 
-            # ---------------------------------
-            # IMAGE + TEXT
-            # Vision model
-            # ---------------------------------
+            # ==========================
+            # IMAGE ANALYSIS
+            # ==========================
 
             if image:
+
+                if not isinstance(
+                    image,
+                    str
+                ):
+                    raise ValueError(
+                        "Invalid image data."
+                    )
+
+                if not image.startswith(
+                    "data:image/"
+                ):
+                    raise ValueError(
+                        "Invalid image format."
+                    )
+
+                client = get_client()
 
                 user_content = [
                     {
@@ -163,8 +255,9 @@ class handler(BaseHTTPRequestHandler):
                         "text": (
                             question
                             or
-                            "Please analyze this image "
-                            "and explain it clearly."
+                            "Analyze this image "
+                            "and explain what you see "
+                            "clearly."
                         ),
                     },
                     {
@@ -191,12 +284,13 @@ class handler(BaseHTTPRequestHandler):
                     )
                 )
 
-            # ---------------------------------
-            # TEXT ONLY
-            # Fast normal chatbot
-            # ---------------------------------
+            # ==========================
+            # NORMAL TEXT CHAT
+            # ==========================
 
             else:
+
+                client = get_client()
 
                 response = (
                     client.chat.completions.create(
@@ -214,12 +308,32 @@ class handler(BaseHTTPRequestHandler):
                     )
                 )
 
+            # ==========================
+            # GET AI ANSWER
+            # ==========================
+
+            if not response.choices:
+
+                raise RuntimeError(
+                    "AI returned no response."
+                )
+
             answer = (
                 response
                 .choices[0]
                 .message
                 .content
             )
+
+            if not answer:
+
+                raise RuntimeError(
+                    "AI returned an empty response."
+                )
+
+            # ==========================
+            # SUCCESS
+            # ==========================
 
             self.send_json(
                 {
@@ -231,7 +345,10 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
 
-            print("API ERROR:", str(e))
+            print(
+                "API ERROR:",
+                repr(e)
+            )
 
             self.send_json(
                 {
@@ -239,36 +356,50 @@ class handler(BaseHTTPRequestHandler):
                         "Sorry, something went wrong."
                     ),
                     "error": str(e),
+                    "image": None,
                 },
                 500,
             )
 
+    # ==============================
+    # CORS
+    # ==============================
+
     def do_OPTIONS(self):
+
         self.send_response(204)
+
         self.send_cors_headers()
+
         self.end_headers()
 
     def send_cors_headers(self):
+
         self.send_header(
             "Access-Control-Allow-Origin",
-            "*",
+            "*"
         )
 
         self.send_header(
             "Access-Control-Allow-Methods",
-            "POST, OPTIONS",
+            "POST, OPTIONS"
         )
 
         self.send_header(
             "Access-Control-Allow-Headers",
-            "Content-Type",
+            "Content-Type"
         )
+
+    # ==============================
+    # JSON RESPONSE
+    # ==============================
 
     def send_json(
         self,
         data,
-        status_code=200,
+        status_code=200
     ):
+
         response = json.dumps(
             data
         ).encode("utf-8")
@@ -279,7 +410,12 @@ class handler(BaseHTTPRequestHandler):
 
         self.send_header(
             "Content-Type",
-            "application/json",
+            "application/json"
+        )
+
+        self.send_header(
+            "Content-Length",
+            str(len(response))
         )
 
         self.send_cors_headers()
