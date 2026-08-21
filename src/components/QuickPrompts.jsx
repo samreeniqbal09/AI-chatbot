@@ -5,33 +5,45 @@ import {
   Lightbulb,
   MessageCircle,
   Sparkles,
+  PenLine,
 } from "lucide-react"
 
 const prompts = [
   {
     icon: Lightbulb,
     title: "Explain a concept",
-    prompt: "Explain a difficult computer science concept in simple words.",
+    prompt:
+      "Explain a difficult computer science concept in simple words.",
   },
   {
     icon: Code2,
     title: "Write some code",
-    prompt: "Write a clean example of a useful programming solution.",
+    prompt:
+      "Write a clean example of a useful programming solution.",
   },
   {
     icon: FileText,
     title: "Summarize text",
-    prompt: "Summarize the following text clearly and briefly.",
+    prompt:
+      "Summarize the following text clearly and briefly.",
   },
   {
     icon: Sparkles,
     title: "Brainstorm ideas",
-    prompt: "Give me some creative ideas for a computer science project.",
+    prompt:
+      "Give me some creative ideas for a computer science project.",
+  },
+  {
+    icon: PenLine,
+    title: "Improve writing",
+    prompt:
+      "Improve my writing and make it clearer, more polished, and professional.",
   },
   {
     icon: MessageCircle,
     title: "Ask anything",
-    prompt: "Tell me something interesting and useful.",
+    prompt:
+      "Tell me something interesting and useful.",
   },
 ]
 
@@ -44,11 +56,28 @@ function QuickPrompts({ onSelect }) {
         return (
           <motion.button
             key={item.title}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            whileHover={{ y: -3 }}
-            whileTap={{ scale: 0.98 }}
+            initial={{
+              opacity: 0,
+              y: 25,
+              scale: 0.96,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+            }}
+            transition={{
+              delay: index * 0.08,
+              duration: 0.45,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            whileHover={{
+              y: -5,
+              scale: 1.02,
+            }}
+            whileTap={{
+              scale: 0.97,
+            }}
             onClick={() => onSelect(item.prompt)}
             className="quick-prompt-card"
           >

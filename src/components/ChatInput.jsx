@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { ArrowUp, Loader2 } from "lucide-react"
+import { ArrowUp, Loader2, Sparkles } from "lucide-react"
+import { motion } from "motion/react"
 
 function ChatInput({ onSend, loading }) {
   const [input, setInput] = useState("")
@@ -22,31 +23,72 @@ function ChatInput({ onSend, loading }) {
     }
   }
 
+  const handleChange = (e) => {
+    setInput(e.target.value)
+
+    // Automatically grow textarea
+    e.target.style.height = "auto"
+    e.target.style.height = `${Math.min(
+      e.target.scrollHeight,
+      160
+    )}px`
+  }
+
+  const hasText = input.trim().length > 0
+
   return (
     <div className="chat-input-container">
-      <form onSubmit={handleSubmit} className="chat-input-form">
+      <form
+        onSubmit={handleSubmit}
+        className="chat-input-form"
+      >
+        {/* AI ICON */}
+        <div className="input-ai-icon">
+          <Sparkles size={16} />
+        </div>
+
+        {/* TEXTAREA */}
         <textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Message your AI..."
+          placeholder="Ask Lumora anything..."
           rows={1}
           disabled={loading}
           className="chat-input"
+          aria-label="Message Lumora AI"
         />
 
-        <button
+        {/* SEND BUTTON */}
+        <motion.button
           type="submit"
-          disabled={!input.trim() || loading}
+          disabled={!hasText || loading}
           className="send-button"
           aria-label="Send message"
+          whileHover={
+            hasText && !loading
+              ? {
+                  scale: 1.05,
+                }
+              : {}
+          }
+          whileTap={
+            hasText && !loading
+              ? {
+                  scale: 0.92,
+                }
+              : {}
+          }
         >
           {loading ? (
-            <Loader2 size={18} className="spin" />
+            <Loader2
+              size={18}
+              className="spin"
+            />
           ) : (
             <ArrowUp size={18} />
           )}
-        </button>
+        </motion.button>
       </form>
 
       <p className="input-hint">

@@ -265,16 +265,14 @@ function App() {
         const newChat =
           await createChat(cleanText)
 
-        // IMPORTANT:
-        // If Supabase fails, DON'T stop
-        // the AI request.
+        // If Supabase fails,
+        // don't stop the AI request.
         if (newChat) {
           chatId = newChat.id
         }
       }
 
-      // Save user message only if
-      // Supabase chat was created
+      // Save user message
       if (chatId) {
         await saveMessage(
           chatId,
@@ -363,8 +361,7 @@ function App() {
         aiMessage,
       ])
 
-      // Save AI response if
-      // Supabase is working
+      // Save AI response
       if (chatId) {
         await saveMessage(
           chatId,
@@ -421,7 +418,23 @@ function App() {
       />
 
       <main className="main-content">
-        <header className="chat-header">
+
+        {/* HEADER */}
+        <motion.header
+          className="chat-header"
+          initial={{
+            opacity: 0,
+            y: -15,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.5,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
           <button
             className="menu-button"
             onClick={() =>
@@ -451,42 +464,140 @@ function App() {
               <Moon size={20} />
             )}
           </button>
-        </header>
+        </motion.header>
 
+        {/* MAIN CHAT AREA */}
         <section className="messages-area">
+
           {messages.length === 0 ? (
+
+            /*
+             * PROFESSIONAL WELCOME ANIMATION
+             */
             <motion.div
               className="welcome-screen"
+
               initial={{
                 opacity: 0,
-                y: 15,
+                y: 45,
+                scale: 0.97,
+                filter: "blur(5px)",
               }}
+
               animate={{
                 opacity: 1,
                 y: 0,
+                scale: 1,
+                filter: "blur(0px)",
+              }}
+
+              transition={{
+                duration: 0.7,
+                ease: [0.22, 1, 0.36, 1],
               }}
             >
-              <div className="welcome-icon">
+
+              {/* WELCOME ICON */}
+              <motion.div
+                className="welcome-icon"
+
+                initial={{
+                  opacity: 0,
+                  y: 30,
+                  scale: 0.75,
+                }}
+
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                }}
+
+                transition={{
+                  delay: 0.15,
+                  duration: 0.6,
+                  type: "spring",
+                  stiffness: 160,
+                  damping: 14,
+                }}
+              >
                 <Sparkles size={32} />
-              </div>
+              </motion.div>
 
-              <h1>
-                How can I help you?
-              </h1>
+              {/* TITLE */}
+              <motion.h1
+                initial={{
+                  opacity: 0,
+                  y: 25,
+                }}
 
-              <p>
-                Ask me anything, write
-                code, explain a concept,
-                summarize text, or
-                brainstorm ideas.
-              </p>
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
 
-              <QuickPrompts
-                onSelect={sendMessage}
-              />
+                transition={{
+                  delay: 0.25,
+                  duration: 0.55,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                “What would you like to explore today?”
+              </motion.h1>
+
+              {/* DESCRIPTION */}
+              <motion.p
+                initial={{
+                  opacity: 0,
+                  y: 20,
+                }}
+
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+
+                transition={{
+                  delay: 0.35,
+                  duration: 0.55,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+              Explore ideas, solve problems, write code, improve your work, and get intelligent assistance—all in one place.
+              </motion.p>
+
+              {/* QUICK PROMPTS */}
+              <motion.div
+                initial={{
+                  opacity: 0,
+                  y: 35,
+                  scale: 0.97,
+                }}
+
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                }}
+
+                transition={{
+                  delay: 0.45,
+                  duration: 0.65,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <QuickPrompts
+                  onSelect={sendMessage}
+                />
+              </motion.div>
+
             </motion.div>
+
           ) : (
+
+            /* CHAT MESSAGES */
             <div className="messages-list">
+
               {messages.map(
                 (message) => (
                   <ChatMessage
@@ -497,18 +608,55 @@ function App() {
               )}
 
               {loading && (
-                <div className="typing-indicator">
+                <motion.div
+                  className="typing-indicator"
+
+                  initial={{
+                    opacity: 0,
+                    y: 10,
+                  }}
+
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+
+                  transition={{
+                    duration: 0.3,
+                  }}
+                >
                   AI is thinking...
-                </div>
+                </motion.div>
               )}
+
             </div>
           )}
         </section>
 
-        <ChatInput
-          onSend={sendMessage}
-          loading={loading}
-        />
+        {/* CHAT INPUT */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 25,
+          }}
+
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+
+          transition={{
+            delay: 0.55,
+            duration: 0.6,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          <ChatInput
+            onSend={sendMessage}
+            loading={loading}
+          />
+        </motion.div>
+
       </main>
     </div>
   )
