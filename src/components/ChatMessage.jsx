@@ -18,9 +18,7 @@ function ChatMessage({ message }) {
       await navigator.clipboard.writeText(message.content)
       setCopied(true)
 
-      setTimeout(() => {
-        setCopied(false)
-      }, 1500)
+      setTimeout(() => setCopied(false), 1500)
     } catch (error) {
       console.error("Copy failed:", error)
     }
@@ -28,42 +26,37 @@ function ChatMessage({ message }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        duration: 0.35,
-        ease: [0.22, 1, 0.36, 1],
-      }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
       className={`flex w-full gap-3 px-4 py-3 ${
         isUser ? "justify-end" : "justify-start"
       }`}
     >
       {/* AI AVATAR */}
       {!isUser && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            delay: 0.08,
-            duration: 0.25,
-          }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"
+        <div
+          className="
+            flex h-9 w-9 shrink-0 items-center justify-center
+            rounded-xl
+            bg-indigo-600
+            text-white
+            shadow-[0_4px_12px_rgba(79,70,229,0.22)]
+          "
         >
-          <Bot size={18} />
-        </motion.div>
+          <Bot size={17} strokeWidth={2} />
+        </div>
       )}
 
       {/* MESSAGE */}
       <div
-        className={`group relative ${
-          isUser
-            ? "order-1 max-w-[80%]"
-            : "max-w-[85%]"
+        className={`group ${
+          isUser ? "max-w-[80%]" : "max-w-[85%]"
         }`}
       >
         <motion.div
           whileHover={{ y: -1 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.15 }}
           className={`rounded-2xl px-4 py-3 shadow-sm ${
             isUser
               ? "rounded-br-md bg-indigo-600 text-white"
@@ -83,12 +76,23 @@ function ChatMessage({ message }) {
           )}
         </motion.div>
 
-        {/* COPY BUTTON */}
+        {/* COPY */}
         {!isUser && (
           <button
             onClick={handleCopy}
             title={copied ? "Copied" : "Copy response"}
-            className="mt-2 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="
+              mt-1.5 inline-flex items-center gap-1.5
+              rounded-md px-2 py-1
+              text-xs font-medium
+              text-indigo-500
+              transition-all
+              hover:bg-indigo-50
+              hover:text-indigo-700
+              dark:text-indigo-300
+              dark:hover:bg-indigo-950/40
+              dark:hover:text-indigo-200
+            "
           >
             {copied ? (
               <>
@@ -107,17 +111,20 @@ function ChatMessage({ message }) {
 
       {/* USER AVATAR */}
       {isUser && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            delay: 0.08,
-            duration: 0.25,
-          }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-300 bg-gray-100 text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+        <div
+          className="
+            flex h-9 w-9 shrink-0 items-center justify-center
+            rounded-xl
+            border border-indigo-200
+            bg-indigo-50
+            text-indigo-600
+            dark:border-indigo-800
+            dark:bg-indigo-950/50
+            dark:text-indigo-300
+          "
         >
-          <User size={18} />
-        </motion.div>
+          <User size={17} strokeWidth={2} />
+        </div>
       )}
     </motion.div>
   )
