@@ -1,11 +1,6 @@
 import { useState } from "react"
 import { motion } from "motion/react"
-import {
-  Bot,
-  User,
-  Copy,
-  Check,
-} from "lucide-react"
+import { Bot, User, Copy, Check } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -13,12 +8,19 @@ function ChatMessage({ message }) {
   const isUser = message.role === "user"
   const [copied, setCopied] = useState(false)
 
+  const content = message.content || ""
+  const image = message.image || null
+
   const handleCopy = async () => {
+    if (!content) return
+
     try {
-      await navigator.clipboard.writeText(message.content)
+      await navigator.clipboard.writeText(content)
       setCopied(true)
 
-      setTimeout(() => setCopied(false), 1500)
+      setTimeout(() => {
+        setCopied(false)
+      }, 1500)
     } catch (error) {
       console.error("Copy failed:", error)
     }
@@ -48,45 +50,78 @@ function ChatMessage({ message }) {
         </div>
       )}
 
-      {/* MESSAGE */}
+      {/* MESSAGE CONTENT */}
       <div
-        className={`group ${
+        className={`group min-w-0 ${
           isUser ? "max-w-[80%]" : "max-w-[85%]"
         }`}
       >
         <motion.div
           whileHover={{ y: -1 }}
           transition={{ duration: 0.15 }}
-          className={`rounded-2xl px-4 py-3 shadow-sm ${
+          className={`overflow-hidden rounded-2xl px-4 py-3 shadow-sm ${
             isUser
               ? "rounded-br-md bg-indigo-600 text-white"
               : "rounded-bl-md border border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           }`}
         >
-          {isUser ? (
-            <div className="whitespace-pre-wrap break-words text-sm leading-6">
-              {message.content}
-            </div>
-          ) : (
-            <div className="chat-markdown">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content}
-              </ReactMarkdown>
-            </div>
+          {/* IMAGE */}
+          {image && (
+            <img
+              src={image}
+              alt="Uploaded"
+              loading="lazy"
+              className="
+                mb-3
+                max-h-72
+                max-w-full
+                rounded-xl
+                object-contain
+              "
+              onError={(e) => {
+                e.currentTarget.style.display = "none"
+              }}
+            />
+          )}
+
+          {/* TEXT */}
+          {content && (
+            <>
+              {isUser ? (
+                <div className="whitespace-pre-wrap break-words text-sm leading-6">
+                  {content}
+                </div>
+              ) : (
+                <div className="chat-markdown break-words">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                  >
+                    {content}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </>
           )}
         </motion.div>
 
-        {/* COPY */}
-        {!isUser && (
+        {/* COPY BUTTON */}
+        {!isUser && content && (
           <button
+            type="button"
             onClick={handleCopy}
             title={copied ? "Copied" : "Copy response"}
             className="
-              mt-1.5 inline-flex items-center gap-1.5
-              rounded-md px-2 py-1
-              text-xs font-medium
+              mt-1.5
+              inline-flex
+              items-center
+              gap-1.5
+              rounded-md
+              px-2
+              py-1
+              text-xs
+              font-medium
               text-indigo-500
-              transition-all
+              transition
               hover:bg-indigo-50
               hover:text-indigo-700
               dark:text-indigo-300

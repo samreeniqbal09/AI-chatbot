@@ -24,6 +24,10 @@ function App() {
     document.documentElement.classList.toggle("dark", darkMode)
   }, [darkMode])
 
+  /* =========================
+     CHAT HISTORY
+  ========================= */
+
   const loadChats = async () => {
     const { data, error } = await supabase
       .from("chat_sessions")
@@ -40,7 +44,9 @@ function App() {
 
   const createChat = async (text) => {
     const title =
-      text.length > 30 ? `${text.slice(0, 30)}...` : text || "New Chat"
+      text.length > 30
+        ? `${text.slice(0, 30)}...`
+        : text || "New Chat"
 
     const { data, error } = await supabase
       .from("chat_sessions")
@@ -55,6 +61,7 @@ function App() {
 
     setChats((prev) => [data, ...prev])
     setActiveChat(data.id)
+
     return data
   }
 
@@ -71,11 +78,30 @@ function App() {
     }
 
     setMessages(
-      (data || []).map(({ id, role, content }) => ({
-        id,
-        role,
-        content,
-      }))
+      (data || []).map(({ id, role, content }) => {
+        let parsedContent = content
+
+        try {
+          parsedContent = JSON.parse(content)
+        } catch {
+          // Normal text message
+        }
+
+        if (typeof parsedContent === "object") {
+          return {
+            id,
+            role,
+            content: parsedContent.text || "",
+            image: parsedContent.image || null,
+          }
+        }
+
+        return {
+          id,
+          role,
+          content: parsedContent,
+        }
+      })
     )
 
     setActiveChat(chatId)
@@ -99,26 +125,55 @@ function App() {
       return
     }
 
-    setChats((prev) => prev.filter((chat) => chat.id !== chatId))
+    setChats((prev) =>
+      prev.filter((chat) => chat.id !== chatId)
+    )
 
     if (activeChat === chatId) {
       handleNewChat()
     }
   }
 
-  const saveMessage = async (sessionId, role, content) => {
-    const { error } = await supabase.from("chat_messages").insert({
-      session_id: sessionId,
-      role,
-      content,
-    })
+  /* =========================
+     SAVE MESSAGE
+  ========================= */
 
-    if (error) console.error("Save message:", error)
+  const saveMessage = async (
+    sessionId,
+    role,
+    content,
+    image = null
+  ) => {
+    const messageContent = image
+      ? JSON.stringify({
+          text: content,
+          image,
+        })
+      : content
+
+    const { error } = await supabase
+      .from("chat_messages")
+      .insert({
+        session_id: sessionId,
+        role,
+        content: messageContent,
+      })
+
+    if (error) {
+      console.error("Save message:", error)
+    }
   }
 
-  const sendMessage = async (text) => {
-    const cleanText = text.trim()
-    if (!cleanText || loading) return
+  /* =========================
+     SEND MESSAGE
+  ========================= */
+
+  const sendMessage = async (text, image = null) => {
+    const cleanText = text?.trim() || ""
+
+    if ((!cleanText && !image) || loading) {
+      return
+    }
 
     setLoading(true)
 
@@ -126,6 +181,7 @@ function App() {
       id: Date.now(),
       role: "user",
       content: cleanText,
+      image: image || null,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -134,14 +190,28 @@ function App() {
       let chatId = activeChat
 
       if (!chatId) {
-        const chat = await createChat(cleanText)
+        const chat = await createChat(
+          cleanText || "Image conversation"
+        )
+
         chatId = chat?.id
       }
 
       if (chatId) {
-        await saveMessage(chatId, "user", cleanText)
+        await saveMessage(
+          chatId,
+          "user",
+          cleanText,
+          image
+        )
       }
 
+      /*
+       * Current backend accepts text only.
+       *
+       * We send the text normally.
+       * Image support is stored/displayed separately.
+       */
       const response = await fetch("/api/ask", {
         method: "POST",
         headers: {
@@ -149,19 +219,22 @@ function App() {
         },
         body: JSON.stringify({
           question: cleanText,
+          image: image || null,
         }),
       })
 
-      const text = await response.text()
+      const responseText = await response.text()
 
       if (!response.ok) {
-        throw new Error(`API error ${response.status}: ${text}`)
+        throw new Error(
+          `API error ${response.status}: ${responseText}`
+        )
       }
 
       let data
 
       try {
-        data = JSON.parse(text)
+        data = JSON.parse(responseText)
       } catch {
         throw new Error("API returned invalid JSON.")
       }
@@ -176,17 +249,26 @@ function App() {
         throw new Error("API returned no AI answer.")
       }
 
+      const assistantMessage = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: answer,
+        image: data.image || null,
+      }
+
       setMessages((prev) => [
         ...prev,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          content: answer,
-        },
+        assistantMessage,
       ])
 
       if (chatId) {
-        await saveMessage(chatId, "assistant", answer)
+        await saveMessage(
+          chatId,
+          "assistant",
+          answer,
+          data.image || null
+        )
+
         await loadChats()
       }
     } catch (error) {
@@ -197,13 +279,19 @@ function App() {
         {
           id: Date.now() + 1,
           role: "assistant",
-          content: `Sorry, something went wrong.\n\n${error.message}`,
+          content:
+            "Sorry, something went wrong.\n\n" +
+            error.message,
         },
       ])
     } finally {
       setLoading(false)
     }
   }
+
+  /* =========================
+     UI
+  ========================= */
 
   return (
     <div className={`app ${darkMode ? "dark" : ""}`}>
@@ -219,6 +307,7 @@ function App() {
       />
 
       <main className="main-content">
+        {/* HEADER */}
         <motion.header
           className="chat-header"
           initial={{ opacity: 0, y: -15 }}
@@ -240,13 +329,20 @@ function App() {
 
           <button
             className="theme-button"
-            onClick={() => setDarkMode((prev) => !prev)}
+            onClick={() =>
+              setDarkMode((prev) => !prev)
+            }
             aria-label="Toggle dark mode"
           >
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            {darkMode ? (
+              <Sun size={20} />
+            ) : (
+              <Moon size={20} />
+            )}
           </button>
         </motion.header>
 
+        {/* MESSAGES */}
         <section className="messages-area">
           {messages.length === 0 ? (
             <motion.div
@@ -257,21 +353,31 @@ function App() {
             >
               <motion.div
                 className="welcome-icon"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+                initial={{
+                  scale: 0.8,
+                  opacity: 0,
+                }}
+                animate={{
+                  scale: 1,
+                  opacity: 1,
+                }}
               >
                 <Sparkles size={32} />
               </motion.div>
 
-              <h1>What would you like to explore today?</h1>
+              <h1>
+                What would you like to explore today?
+              </h1>
 
               <p>
-                Explore ideas, solve problems, write code, improve
-                your work, and get intelligent assistance—all in one
-                place.
+                Explore ideas, solve problems, write code,
+                understand concepts, and get intelligent
+                assistance in one place.
               </p>
 
-              <QuickPrompts onSelect={sendMessage} />
+              <QuickPrompts
+                onSelect={sendMessage}
+              />
             </motion.div>
           ) : (
             <div className="messages-list">
@@ -288,13 +394,14 @@ function App() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
-                  AI is thinking...
+                  Lumora is thinking...
                 </motion.div>
               )}
             </div>
           )}
         </section>
 
+        {/* INPUT */}
         <ChatInput
           onSend={sendMessage}
           loading={loading}
