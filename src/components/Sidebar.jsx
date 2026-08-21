@@ -1,6 +1,7 @@
 import { motion } from "motion/react"
 import {
   Bot,
+  Clock3,
   MessageSquare,
   Plus,
   Trash2,
@@ -17,9 +18,10 @@ function Sidebar({
   setSidebarOpen,
   darkMode,
 }) {
+  const recentChats = chats.slice(0, 8)
+
   return (
     <>
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="sidebar-overlay"
@@ -29,16 +31,17 @@ function Sidebar({
 
       <motion.aside
         initial={{ x: -280 }}
-        animate={{ x: sidebarOpen ? 0 : 0 }}
+        animate={{ x: 0 }}
+        transition={{ duration: 0.25 }}
         className={`sidebar ${sidebarOpen ? "sidebar-open" : ""} ${
           darkMode ? "sidebar-dark" : ""
         }`}
       >
-        {/* Logo / Branding */}
+        {/* Header */}
         <div className="sidebar-header">
           <div className="brand">
             <div className="brand-icon">
-              <Bot size={22} />
+              <Bot size={21} />
             </div>
 
             <div>
@@ -52,13 +55,13 @@ function Sidebar({
             onClick={() => setSidebarOpen(false)}
             aria-label="Close sidebar"
           >
-            <X size={20} />
+            <X size={19} />
           </button>
         </div>
 
         {/* New Chat */}
         <button className="new-chat-button" onClick={onNewChat}>
-          <Plus size={19} />
+          <Plus size={18} />
           <span>New Chat</span>
         </button>
 
@@ -66,13 +69,8 @@ function Sidebar({
         <div className="chat-history">
           <p className="history-title">Recent Chats</p>
 
-          {chats.length === 0 ? (
-            <div className="empty-history">
-              <MessageSquare size={20} />
-              <p>No conversations yet</p>
-            </div>
-          ) : (
-            chats.map((chat) => (
+          {recentChats.length > 0 ? (
+            recentChats.map((chat) => (
               <div
                 key={chat.id}
                 className={`chat-item ${
@@ -80,7 +78,7 @@ function Sidebar({
                 }`}
                 onClick={() => onSelectChat(chat.id)}
               >
-                <MessageSquare size={17} />
+                <MessageSquare size={16} />
 
                 <span className="chat-title">
                   {chat.title || "New Chat"}
@@ -92,18 +90,45 @@ function Sidebar({
                     e.stopPropagation()
                     onDeleteChat(chat.id)
                   }}
-                  aria-label="Delete chat"
+                  aria-label="Delete conversation"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={15} />
                 </button>
               </div>
             ))
+          ) : (
+            <div className="empty-history">
+              <MessageSquare size={19} />
+              <p>No conversations yet</p>
+            </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="sidebar-footer">
-          <span>Powered by Lumora AI</span>
+        {/* Bottom Section */}
+        <div className="sidebar-bottom">
+          <div className="recent-activity">
+            <p className="history-title">Recent Activity</p>
+
+            <div className="activity-item">
+              <Clock3 size={14} />
+              <span>
+                {chats.length
+                  ? `${chats.length} conversation${
+                      chats.length > 1 ? "s" : ""
+                    }`
+                  : "No recent activity"}
+              </span>
+            </div>
+
+            <div className="activity-item">
+              <MessageSquare size={14} />
+              <span>Chat history synced</span>
+            </div>
+          </div>
+
+          <div className="sidebar-footer">
+            Lumora AI · Intelligent Assistant
+          </div>
         </div>
       </motion.aside>
     </>
