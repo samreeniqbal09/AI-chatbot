@@ -56,8 +56,9 @@ function ChatInput({ onSend, loading }) {
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Please choose an image smaller than 5MB.")
+    // Keep request size safe for serverless API
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Please choose an image smaller than 2MB.")
       e.target.value = ""
       return
     }
@@ -107,7 +108,6 @@ function ChatInput({ onSend, loading }) {
         })
 
       stream.current = audioStream
-
       recorder.current = new MediaRecorder(audioStream)
 
       recorder.current.start()
