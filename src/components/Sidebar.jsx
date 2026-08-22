@@ -121,15 +121,6 @@ function Sidebar({
               <span>Intelligent AI Assistant</span>
             </div>
           </div>
-
-          <button
-            type="button"
-            className="mobile-close"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            <X size={18} />
-          </button>
         </div>
 
         {/* Search */}
@@ -143,6 +134,7 @@ function Sidebar({
             onChange={(e) => setSearch(e.target.value)}
           />
 
+          {/* X only appears when searching */}
           {search && (
             <button
               type="button"
