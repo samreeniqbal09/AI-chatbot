@@ -14,11 +14,16 @@ function App() {
   const [activeChat, setActiveChat] = useState(null)
   const [loading, setLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+
+  // Sidebar is CLOSED by default on mobile
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   /* THEME */
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode)
+    document.documentElement.classList.toggle(
+      "dark",
+      darkMode
+    )
   }, [darkMode])
 
   /* LOAD CHATS */
@@ -26,11 +31,31 @@ function App() {
     loadChats()
   }, [])
 
+  /* CLOSE SIDEBAR WHEN SWITCHING TO MOBILE */
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 900) {
+        setSidebarOpen(false)
+      }
+    }
+
+    window.addEventListener("resize", handleResize)
+
+    return () => {
+      window.removeEventListener(
+        "resize",
+        handleResize
+      )
+    }
+  }, [])
+
   const loadChats = async () => {
     const { data, error } = await supabase
       .from("chat_sessions")
       .select("*")
-      .order("created_at", { ascending: false })
+      .order("created_at", {
+        ascending: false,
+      })
 
     if (error) {
       console.error("Load chats:", error)
@@ -42,21 +67,29 @@ function App() {
 
   /* CREATE CHAT */
   const createChat = async (text = "New Chat") => {
-    const title = text.trim().slice(0, 35) || "New Chat"
+    const title =
+      text.trim().slice(0, 35) || "New Chat"
 
     const { data, error } = await supabase
       .from("chat_sessions")
-      .insert({ title })
+      .insert({
+        title,
+      })
       .select()
       .single()
 
     if (error) {
-      throw new Error(error.message || "Unable to create chat.")
+      throw new Error(
+        error.message ||
+          "Unable to create chat."
+      )
     }
 
     setChats((prev) => [
       data,
-      ...prev.filter((chat) => chat.id !== data.id),
+      ...prev.filter(
+        (chat) => chat.id !== data.id
+      ),
     ])
 
     setActiveChat(data.id)
@@ -72,39 +105,54 @@ function App() {
       .from("chat_messages")
       .select("*")
       .eq("session_id", chatId)
-      .order("created_at", { ascending: true })
+      .order("created_at", {
+        ascending: true,
+      })
 
     if (error) {
-      console.error("Load messages:", error)
+      console.error(
+        "Load messages:",
+        error
+      )
       return
     }
 
-    const formatted = (data || []).map((message) => {
-      try {
-        const parsed = JSON.parse(message.content)
+    const formatted = (data || []).map(
+      (message) => {
+        try {
+          const parsed = JSON.parse(
+            message.content
+          )
 
-        if (parsed && typeof parsed === "object") {
-          return {
-            id: message.id,
-            role: message.role,
-            content: parsed.text || "",
-            image: parsed.image || null,
+          if (
+            parsed &&
+            typeof parsed === "object"
+          ) {
+            return {
+              id: message.id,
+              role: message.role,
+              content: parsed.text || "",
+              image: parsed.image || null,
+            }
           }
+        } catch {
+          // Normal text message
         }
-      } catch {
-        // Normal text message
-      }
 
-      return {
-        id: message.id,
-        role: message.role,
-        content: message.content || "",
-        image: null,
+        return {
+          id: message.id,
+          role: message.role,
+          content: message.content || "",
+          image: null,
+        }
       }
-    })
+    )
 
     setMessages(formatted)
     setActiveChat(chatId)
+
+    // IMPORTANT:
+    // Close sidebar after selecting a chat
     setSidebarOpen(false)
   }
 
@@ -112,6 +160,8 @@ function App() {
   const handleNewChat = () => {
     setMessages([])
     setActiveChat(null)
+
+    // Close sidebar on mobile
     setSidebarOpen(false)
   }
 
@@ -123,12 +173,17 @@ function App() {
       .eq("id", chatId)
 
     if (error) {
-      console.error("Delete chat:", error)
+      console.error(
+        "Delete chat:",
+        error
+      )
       return
     }
 
     setChats((prev) =>
-      prev.filter((chat) => chat.id !== chatId)
+      prev.filter(
+        (chat) => chat.id !== chatId
+      )
     )
 
     if (activeChat === chatId) {
@@ -138,25 +193,38 @@ function App() {
   }
 
   /* RENAME CHAT */
-  const renameChat = async (chatId, newTitle) => {
+  const renameChat = async (
+    chatId,
+    newTitle
+  ) => {
     const title = newTitle?.trim()
 
     if (!title) return
 
+    const finalTitle = title.slice(0, 60)
+
     const { error } = await supabase
       .from("chat_sessions")
-      .update({ title: title.slice(0, 60) })
+      .update({
+        title: finalTitle,
+      })
       .eq("id", chatId)
 
     if (error) {
-      console.error("Rename chat:", error)
+      console.error(
+        "Rename chat:",
+        error
+      )
       return
     }
 
     setChats((prev) =>
       prev.map((chat) =>
         chat.id === chatId
-          ? { ...chat, title: title.slice(0, 60) }
+          ? {
+              ...chat,
+              title: finalTitle,
+            }
           : chat
       )
     )
@@ -185,15 +253,27 @@ function App() {
       })
 
     if (error) {
-      throw new Error(error.message || "Unable to save message.")
+      throw new Error(
+        error.message ||
+          "Unable to save message."
+      )
     }
   }
 
   /* SEND MESSAGE */
-  const sendMessage = async (text, image = null) => {
-    const cleanText = text?.trim() || ""
+  const sendMessage = async (
+    text,
+    image = null
+  ) => {
+    const cleanText =
+      text?.trim() || ""
 
-    if ((!cleanText && !image) || loading) return
+    if (
+      (!cleanText && !image) ||
+      loading
+    ) {
+      return
+    }
 
     setLoading(true)
 
@@ -204,19 +284,25 @@ function App() {
       image,
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+    ])
 
     try {
       let chatId = activeChat
 
+      /* CREATE CHAT IF NEEDED */
       if (!chatId) {
         const chat = await createChat(
-          cleanText || "Image conversation"
+          cleanText ||
+            "Image conversation"
         )
 
         chatId = chat.id
       }
 
+      /* SAVE USER MESSAGE */
       await saveMessage(
         chatId,
         "user",
@@ -224,18 +310,24 @@ function App() {
         image
       )
 
-      const response = await fetch("/api/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          question: cleanText,
-          image,
-        }),
-      })
+      /* API REQUEST */
+      const response = await fetch(
+        "/api/ask",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            question: cleanText,
+            image,
+          }),
+        }
+      )
 
-      const responseText = await response.text()
+      const responseText =
+        await response.text()
 
       if (!response.ok) {
         throw new Error(
@@ -246,9 +338,13 @@ function App() {
       let data
 
       try {
-        data = JSON.parse(responseText)
+        data = JSON.parse(
+          responseText
+        )
       } catch {
-        throw new Error("API returned invalid JSON.")
+        throw new Error(
+          "API returned invalid JSON."
+        )
       }
 
       const answer =
@@ -258,9 +354,12 @@ function App() {
         data.message
 
       if (!answer) {
-        throw new Error("API returned no AI answer.")
+        throw new Error(
+          "API returned no AI answer."
+        )
       }
 
+      /* ASSISTANT MESSAGE */
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
@@ -273,6 +372,7 @@ function App() {
         assistantMessage,
       ])
 
+      /* SAVE ASSISTANT MESSAGE */
       await saveMessage(
         chatId,
         "assistant",
@@ -280,9 +380,13 @@ function App() {
         data.image || null
       )
 
+      /* REFRESH CHAT LIST */
       await loadChats()
     } catch (error) {
-      console.error("Chat error:", error)
+      console.error(
+        "Chat error:",
+        error
+      )
 
       setMessages((prev) => [
         ...prev,
@@ -291,7 +395,8 @@ function App() {
           role: "assistant",
           content:
             "Sorry, something went wrong.\n\n" +
-            (error?.message || "Please try again."),
+            (error?.message ||
+              "Please try again."),
         },
       ])
     } finally {
@@ -300,7 +405,12 @@ function App() {
   }
 
   return (
-    <div className={`app ${darkMode ? "dark" : ""}`}>
+    <div
+      className={`app ${
+        darkMode ? "dark" : ""
+      }`}
+    >
+      {/* SIDEBAR */}
       <Sidebar
         chats={chats}
         activeChat={activeChat}
@@ -309,7 +419,9 @@ function App() {
         onDeleteChat={deleteChat}
         onRenameChat={renameChat}
         sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
+        setSidebarOpen={
+          setSidebarOpen
+        }
         darkMode={darkMode}
       />
 
@@ -317,26 +429,52 @@ function App() {
         {/* HEADER */}
         <motion.header
           className="chat-header"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          initial={{
+            opacity: 0,
+            y: -10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.3,
+          }}
         >
+          {/* MOBILE SIDEBAR BUTTON */}
           <button
             type="button"
             className="menu-button"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open sidebar"
+            onClick={() =>
+              setSidebarOpen(
+                (prev) => !prev
+              )
+            }
+            aria-label={
+              sidebarOpen
+                ? "Close sidebar"
+                : "Open sidebar"
+            }
+            title={
+              sidebarOpen
+                ? "Close sidebar"
+                : "Open sidebar"
+            }
           >
             <Menu size={21} />
           </button>
 
+          {/* HEADER BRAND */}
           <div className="header-center">
             <div className="header-logo">
               <Sparkles size={15} />
             </div>
 
             <div className="header-brand-text">
-              <div className="header-title">Lumora AI</div>
+              <div className="header-title">
+                Lumora AI
+              </div>
+
               <div className="header-subtitle">
                 Intelligent Assistant
               </div>
@@ -348,10 +486,15 @@ function App() {
             </span>
           </div>
 
+          {/* DARK MODE */}
           <button
             type="button"
             className="theme-button"
-            onClick={() => setDarkMode((prev) => !prev)}
+            onClick={() =>
+              setDarkMode(
+                (prev) => !prev
+              )
+            }
             aria-label="Toggle dark mode"
             title="Toggle theme"
           >
@@ -363,47 +506,76 @@ function App() {
           </button>
         </motion.header>
 
-        {/* CHAT */}
+        {/* CHAT AREA */}
         <section className="messages-area">
           {messages.length === 0 ? (
             <motion.div
               className="welcome-screen"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45 }}
+              initial={{
+                opacity: 0,
+                y: 20,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.45,
+              }}
             >
               <motion.div
                 className="welcome-icon"
-                initial={{ scale: 0.85, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.35 }}
+                initial={{
+                  scale: 0.85,
+                  opacity: 0,
+                }}
+                animate={{
+                  scale: 1,
+                  opacity: 1,
+                }}
+                transition={{
+                  duration: 0.35,
+                }}
               >
                 <Sparkles size={27} />
               </motion.div>
 
-              <h1>What can I help you with?</h1>
+              <h1>
+                What can I help you with?
+              </h1>
 
               <p>
-                Ask questions, explore ideas, write code,
-                or learn something new with Lumora AI.
+                Ask questions, explore ideas,
+                write code, or learn something
+                new with Lumora AI.
               </p>
 
-              <QuickPrompts onSelect={sendMessage} />
+              <QuickPrompts
+                onSelect={sendMessage}
+              />
             </motion.div>
           ) : (
             <div className="messages-list">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                />
-              ))}
+              {messages.map(
+                (message) => (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                  />
+                )
+              )}
 
               {loading && (
                 <motion.div
                   className="typing-row"
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{
+                    opacity: 0,
+                    y: 5,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
                 >
                   <div className="typing-avatar">
                     <Sparkles size={14} />
@@ -420,6 +592,7 @@ function App() {
           )}
         </section>
 
+        {/* INPUT */}
         <ChatInput
           onSend={sendMessage}
           loading={loading}
