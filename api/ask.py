@@ -125,10 +125,7 @@ class handler(BaseHTTPRequestHandler):
             # =========================================================
 
             response = client.chat.completions.create(
-                model=(
-                    "meta-llama/"
-                    "llama-3.2-11b-vision-instruct"
-                ),
+                model="qwen/qwen3.7-flash",
                 messages=[
                     {
                         "role": "user",
