@@ -14,12 +14,22 @@ function App() {
   const [activeChat, setActiveChat] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // Remember dark mode
+  /* =========================================================
+     DARK MODE
+  ========================================================= */
+
   const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem("lumora-dark-mode") === "true"
+    try {
+      return localStorage.getItem("lumora-dark-mode") === "true"
+    } catch {
+      return false
+    }
   })
 
-  // Sidebar is closed by default on mobile
+  /* =========================================================
+     MOBILE SIDEBAR
+  ========================================================= */
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   /* =========================================================
@@ -27,19 +37,20 @@ function App() {
   ========================================================= */
 
   useEffect(() => {
-    document.documentElement.classList.toggle(
-      "dark",
-      darkMode
-    )
+    document.documentElement.classList.toggle("dark", darkMode)
 
-    localStorage.setItem(
-      "lumora-dark-mode",
-      String(darkMode)
-    )
+    try {
+      localStorage.setItem(
+        "lumora-dark-mode",
+        String(darkMode)
+      )
+    } catch {
+      // Ignore localStorage errors
+    }
   }, [darkMode])
 
   /* =========================================================
-     LOAD CHATS
+     INITIAL LOAD
   ========================================================= */
 
   useEffect(() => {
@@ -47,7 +58,7 @@ function App() {
   }, [])
 
   /* =========================================================
-     MOBILE SIDEBAR
+     RESPONSIVE SIDEBAR
   ========================================================= */
 
   useEffect(() => {
@@ -60,31 +71,32 @@ function App() {
     window.addEventListener("resize", handleResize)
 
     return () => {
-      window.removeEventListener(
-        "resize",
-        handleResize
-      )
+      window.removeEventListener("resize", handleResize)
     }
   }, [])
 
   /* =========================================================
-     LOAD CHAT LIST
+     LOAD CHATS
   ========================================================= */
 
   const loadChats = async () => {
-    const { data, error } = await supabase
-      .from("chat_sessions")
-      .select("*")
-      .order("created_at", {
-        ascending: false,
-      })
+    try {
+      const { data, error } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .order("created_at", {
+          ascending: false,
+        })
 
-    if (error) {
-      console.error("Load chats:", error)
-      return
+      if (error) {
+        console.error("Load chats error:", error)
+        return
+      }
+
+      setChats(data || [])
+    } catch (error) {
+      console.error("Load chats exception:", error)
     }
-
-    setChats(data || [])
   }
 
   /* =========================================================
@@ -93,35 +105,39 @@ function App() {
 
   const createChat = async (text = "New Chat") => {
     const title =
-      text.trim().slice(0, 35) || "New Chat"
+      text?.trim().slice(0, 35) || "New Chat"
 
-    const { data, error } = await supabase
-      .from("chat_sessions")
-      .insert({
-        title,
-      })
-      .select()
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from("chat_sessions")
+        .insert({
+          title,
+        })
+        .select()
+        .single()
 
-    if (error) {
-      console.error("Create chat:", error)
+      if (error) {
+        console.error("Create chat error:", error)
 
-      throw new Error(
-        error.message ||
-          "Unable to create chat."
-      )
+        throw new Error(
+          error.message || "Unable to create chat."
+        )
+      }
+
+      setChats((previous) => [
+        data,
+        ...previous.filter(
+          (chat) => chat.id !== data.id
+        ),
+      ])
+
+      setActiveChat(data.id)
+
+      return data
+    } catch (error) {
+      console.error("Create chat exception:", error)
+      throw error
     }
-
-    setChats((prev) => [
-      data,
-      ...prev.filter(
-        (chat) => chat.id !== data.id
-      ),
-    ])
-
-    setActiveChat(data.id)
-
-    return data
   }
 
   /* =========================================================
@@ -131,59 +147,62 @@ function App() {
   const loadMessages = async (chatId) => {
     if (!chatId) return
 
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .select("*")
-      .eq("session_id", chatId)
-      .order("created_at", {
-        ascending: true,
-      })
+    try {
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("session_id", chatId)
+        .order("created_at", {
+          ascending: true,
+        })
 
-    if (error) {
+      if (error) {
+        console.error("Load messages error:", error)
+        return
+      }
+
+      const formattedMessages = (data || []).map(
+        (message) => {
+          try {
+            const parsed = JSON.parse(
+              message.content
+            )
+
+            if (
+              parsed &&
+              typeof parsed === "object"
+            ) {
+              return {
+                id: message.id,
+                role: message.role,
+                content: parsed.text || "",
+                image: parsed.image || null,
+              }
+            }
+          } catch {
+            // Normal text message
+          }
+
+          return {
+            id: message.id,
+            role: message.role,
+            content: message.content || "",
+            image: null,
+          }
+        }
+      )
+
+      setMessages(formattedMessages)
+      setActiveChat(chatId)
+
+      if (window.innerWidth < 900) {
+        setSidebarOpen(false)
+      }
+    } catch (error) {
       console.error(
-        "Load messages:",
+        "Load messages exception:",
         error
       )
-      return
-    }
-
-    const formatted = (data || []).map(
-      (message) => {
-        try {
-          const parsed = JSON.parse(
-            message.content
-          )
-
-          if (
-            parsed &&
-            typeof parsed === "object"
-          ) {
-            return {
-              id: message.id,
-              role: message.role,
-              content: parsed.text || "",
-              image: parsed.image || null,
-            }
-          }
-        } catch {
-          // Content is normal text
-        }
-
-        return {
-          id: message.id,
-          role: message.role,
-          content: message.content || "",
-          image: null,
-        }
-      }
-    )
-
-    setMessages(formatted)
-    setActiveChat(chatId)
-
-    // Close drawer after selecting a chat
-    if (window.innerWidth < 900) {
-      setSidebarOpen(false)
     }
   }
 
@@ -208,28 +227,35 @@ function App() {
   const deleteChat = async (chatId) => {
     if (!chatId) return
 
-    const { error } = await supabase
-      .from("chat_sessions")
-      .delete()
-      .eq("id", chatId)
+    try {
+      const { error } = await supabase
+        .from("chat_sessions")
+        .delete()
+        .eq("id", chatId)
 
-    if (error) {
+      if (error) {
+        console.error(
+          "Delete chat error:",
+          error
+        )
+        return
+      }
+
+      setChats((previous) =>
+        previous.filter(
+          (chat) => chat.id !== chatId
+        )
+      )
+
+      if (activeChat === chatId) {
+        setMessages([])
+        setActiveChat(null)
+      }
+    } catch (error) {
       console.error(
-        "Delete chat:",
+        "Delete chat exception:",
         error
       )
-      return
-    }
-
-    setChats((prev) =>
-      prev.filter(
-        (chat) => chat.id !== chatId
-      )
-    )
-
-    if (activeChat === chatId) {
-      setMessages([])
-      setActiveChat(null)
     }
   }
 
@@ -247,31 +273,38 @@ function App() {
 
     const finalTitle = title.slice(0, 60)
 
-    const { error } = await supabase
-      .from("chat_sessions")
-      .update({
-        title: finalTitle,
-      })
-      .eq("id", chatId)
+    try {
+      const { error } = await supabase
+        .from("chat_sessions")
+        .update({
+          title: finalTitle,
+        })
+        .eq("id", chatId)
 
-    if (error) {
+      if (error) {
+        console.error(
+          "Rename chat error:",
+          error
+        )
+        return
+      }
+
+      setChats((previous) =>
+        previous.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                title: finalTitle,
+              }
+            : chat
+        )
+      )
+    } catch (error) {
       console.error(
-        "Rename chat:",
+        "Rename chat exception:",
         error
       )
-      return
     }
-
-    setChats((prev) =>
-      prev.map((chat) =>
-        chat.id === chatId
-          ? {
-              ...chat,
-              title: finalTitle,
-            }
-          : chat
-      )
-    )
   }
 
   /* =========================================================
@@ -284,12 +317,18 @@ function App() {
     content,
     image = null
   ) => {
+    if (!sessionId) {
+      throw new Error(
+        "Chat session was not created."
+      )
+    }
+
     const messageContent = image
       ? JSON.stringify({
-          text: content,
+          text: content || "",
           image,
         })
-      : content
+      : content || ""
 
     const { error } = await supabase
       .from("chat_messages")
@@ -301,7 +340,7 @@ function App() {
 
     if (error) {
       console.error(
-        "Save message:",
+        "Save message error:",
         error
       )
 
@@ -339,15 +378,17 @@ function App() {
       image,
     }
 
-    setMessages((prev) => [
-      ...prev,
+    setMessages((previous) => [
+      ...previous,
       userMessage,
     ])
 
     try {
       let chatId = activeChat
 
-      /* CREATE CHAT IF NEEDED */
+      /* -----------------------------------------------------
+         CREATE CHAT WHEN FIRST MESSAGE IS SENT
+      ----------------------------------------------------- */
 
       if (!chatId) {
         const chat = await createChat(
@@ -358,7 +399,9 @@ function App() {
         chatId = chat.id
       }
 
-      /* SAVE USER MESSAGE */
+      /* -----------------------------------------------------
+         SAVE USER MESSAGE
+      ----------------------------------------------------- */
 
       await saveMessage(
         chatId,
@@ -367,7 +410,9 @@ function App() {
         image
       )
 
-      /* API REQUEST */
+      /* -----------------------------------------------------
+         API REQUEST
+      ----------------------------------------------------- */
 
       const response = await fetch(
         "/api/ask",
@@ -396,20 +441,22 @@ function App() {
       let data
 
       try {
-        data = JSON.parse(
-          responseText
-        )
+        data = JSON.parse(responseText)
       } catch {
         throw new Error(
           "API returned invalid JSON."
         )
       }
 
+      /* -----------------------------------------------------
+         GET AI ANSWER
+      ----------------------------------------------------- */
+
       const answer =
-        data.answer ||
-        data.reply ||
-        data.response ||
-        data.message
+        data?.answer ||
+        data?.reply ||
+        data?.response ||
+        data?.message
 
       if (!answer) {
         throw new Error(
@@ -417,30 +464,36 @@ function App() {
         )
       }
 
-      /* ASSISTANT MESSAGE */
+      /* -----------------------------------------------------
+         ADD ASSISTANT MESSAGE
+      ----------------------------------------------------- */
 
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: answer,
-        image: data.image || null,
+        image: data?.image || null,
       }
 
-      setMessages((prev) => [
-        ...prev,
+      setMessages((previous) => [
+        ...previous,
         assistantMessage,
       ])
 
-      /* SAVE ASSISTANT MESSAGE */
+      /* -----------------------------------------------------
+         SAVE ASSISTANT MESSAGE
+      ----------------------------------------------------- */
 
       await saveMessage(
         chatId,
         "assistant",
         answer,
-        data.image || null
+        data?.image || null
       )
 
-      /* REFRESH CHAT LIST */
+      /* -----------------------------------------------------
+         REFRESH SIDEBAR
+      ----------------------------------------------------- */
 
       await loadChats()
     } catch (error) {
@@ -449,8 +502,8 @@ function App() {
         error
       )
 
-      setMessages((prev) => [
-        ...prev,
+      setMessages((previous) => [
+        ...previous,
         {
           id: `error-${Date.now()}`,
           role: "assistant",
@@ -466,11 +519,11 @@ function App() {
   }
 
   /* =========================================================
-     TOGGLE DARK MODE
+     DARK MODE TOGGLE
   ========================================================= */
 
   const toggleDarkMode = () => {
-    setDarkMode((prev) => !prev)
+    setDarkMode((previous) => !previous)
   }
 
   /* =========================================================
@@ -530,7 +583,7 @@ function App() {
             className="menu-button"
             onClick={() =>
               setSidebarOpen(
-                (prev) => !prev
+                (previous) => !previous
               )
             }
             aria-label={
@@ -648,14 +701,12 @@ function App() {
             </motion.div>
           ) : (
             <div className="messages-list">
-              {messages.map(
-                (message) => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                  />
-                )
-              )}
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                />
+              ))}
 
               {/* TYPING INDICATOR */}
 
