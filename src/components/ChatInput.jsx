@@ -19,10 +19,7 @@ function ChatInput({ onSend, loading }) {
   const textareaRef = useRef(null)
   const recognitionRef = useRef(null)
 
-  // Text that existed before voice input started
   const voiceBaseTextRef = useRef("")
-
-  // Prevent old recognition events from changing the input
   const voiceSessionRef = useRef(0)
 
   const hasContent = Boolean(input.trim() || attachment)
@@ -86,6 +83,10 @@ function ChatInput({ onSend, loading }) {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
     }
+
+    if (fileRef.current) {
+      fileRef.current.value = ""
+    }
   }
 
   /* =========================================================
@@ -110,10 +111,100 @@ function ChatInput({ onSend, loading }) {
   }
 
   /* =========================================================
+     COMPRESS IMAGE
+  ========================================================= */
+
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+
+      reader.onload = () => {
+        const image = new Image()
+
+        image.onload = () => {
+          const maxWidth = 1280
+          const maxHeight = 1280
+
+          let width = image.width
+          let height = image.height
+
+          if (
+            width > maxWidth ||
+            height > maxHeight
+          ) {
+            const ratio = Math.min(
+              maxWidth / width,
+              maxHeight / height
+            )
+
+            width = Math.round(width * ratio)
+            height = Math.round(height * ratio)
+          }
+
+          const canvas = document.createElement("canvas")
+
+          canvas.width = width
+          canvas.height = height
+
+          const context = canvas.getContext("2d")
+
+          if (!context) {
+            reject(
+              new Error(
+                "Unable to process image."
+              )
+            )
+            return
+          }
+
+          context.drawImage(
+            image,
+            0,
+            0,
+            width,
+            height
+          )
+
+          const compressedData =
+            canvas.toDataURL(
+              "image/jpeg",
+              0.75
+            )
+
+          resolve({
+            url: compressedData,
+            data: compressedData,
+          })
+        }
+
+        image.onerror = () => {
+          reject(
+            new Error(
+              "Unable to load image."
+            )
+          )
+        }
+
+        image.src = reader.result
+      }
+
+      reader.onerror = () => {
+        reject(
+          new Error(
+            "Unable to read image."
+          )
+        )
+      }
+
+      reader.readAsDataURL(file)
+    })
+  }
+
+  /* =========================================================
      IMAGE UPLOAD
   ========================================================= */
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files?.[0]
 
     if (!file) return
@@ -124,27 +215,33 @@ function ChatInput({ onSend, loading }) {
       return
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Image must be smaller than 2MB.")
+    // Prevent extremely large original files
+    if (file.size > 8 * 1024 * 1024) {
+      alert(
+        "Image is too large. Please choose an image smaller than 8MB."
+      )
       e.target.value = ""
       return
     }
 
-    const reader = new FileReader()
+    try {
+      const compressed = await compressImage(file)
 
-    reader.onload = () => {
       setAttachment({
         name: file.name,
-        url: reader.result,
-        data: reader.result,
+        url: compressed.url,
+        data: compressed.data,
       })
-    }
+    } catch (error) {
+      console.error(
+        "Image processing error:",
+        error
+      )
 
-    reader.onerror = () => {
-      alert("Unable to read this image.")
+      alert(
+        "Unable to process this image. Please try another image."
+      )
     }
-
-    reader.readAsDataURL(file)
 
     e.target.value = ""
   }
@@ -175,7 +272,7 @@ function ChatInput({ onSend, loading }) {
 
     try {
       recognition.stop()
-    } catch (error) {
+    } catch {
       console.log("Voice already stopped.")
     }
 
@@ -200,50 +297,50 @@ function ChatInput({ onSend, loading }) {
 
     if (loading) return
 
-    // Stop any previous recognition
     try {
       recognitionRef.current?.abort()
     } catch {
       // Ignore
     }
 
-    const recognition = new SpeechRecognition()
+    const recognition =
+      new SpeechRecognition()
 
     recognitionRef.current = recognition
-
-    /*
-      continuous:
-      Keeps listening instead of stopping after one sentence.
-
-      interimResults:
-      Shows speech while you are still talking.
-
-      maxAlternatives:
-      Gives the browser one good transcription result.
-    */
 
     recognition.continuous = true
     recognition.interimResults = true
     recognition.maxAlternatives = 1
 
-    // Change to "ur-PK" for Urdu.
+    // English voice recognition
     recognition.lang = "en-US"
 
-    // New voice session ID
-    const sessionId = voiceSessionRef.current + 1
+    const sessionId =
+      voiceSessionRef.current + 1
+
     voiceSessionRef.current = sessionId
 
-    // Save whatever was already typed
-    voiceBaseTextRef.current = input.trim()
+    voiceBaseTextRef.current =
+      input.trim()
 
     recognition.onstart = () => {
-      if (sessionId !== voiceSessionRef.current) return
+      if (
+        sessionId !==
+        voiceSessionRef.current
+      ) {
+        return
+      }
 
       setRecording(true)
     }
 
     recognition.onresult = (event) => {
-      if (sessionId !== voiceSessionRef.current) return
+      if (
+        sessionId !==
+        voiceSessionRef.current
+      ) {
+        return
+      }
 
       let finalTranscript = ""
       let interimTranscript = ""
@@ -256,21 +353,20 @@ function ChatInput({ onSend, loading }) {
         const result = event.results[i]
 
         if (result.isFinal) {
-          finalTranscript += result[0].transcript
+          finalTranscript +=
+            result[0].transcript
         } else {
-          interimTranscript += result[0].transcript
+          interimTranscript +=
+            result[0].transcript
         }
       }
 
-      /*
-        Keep the original typed text,
-        then add recognized speech.
-      */
-
-      const baseText = voiceBaseTextRef.current
+      const baseText =
+        voiceBaseTextRef.current
 
       const spokenText = (
-        finalTranscript || interimTranscript
+        finalTranscript ||
+        interimTranscript
       ).trim()
 
       if (!spokenText) return
@@ -285,7 +381,10 @@ function ChatInput({ onSend, loading }) {
     }
 
     recognition.onerror = (event) => {
-      if (sessionId !== voiceSessionRef.current) {
+      if (
+        sessionId !==
+        voiceSessionRef.current
+      ) {
         return
       }
 
@@ -318,11 +417,7 @@ function ChatInput({ onSend, loading }) {
           break
 
         case "aborted":
-          // User stopped it. No error needed.
-          break
-
         case "no-speech":
-          // Don't show an annoying popup for silence.
           break
 
         default:
@@ -333,7 +428,10 @@ function ChatInput({ onSend, loading }) {
     }
 
     recognition.onend = () => {
-      if (sessionId !== voiceSessionRef.current) {
+      if (
+        sessionId !==
+        voiceSessionRef.current
+      ) {
         return
       }
 
@@ -386,18 +484,14 @@ function ChatInput({ onSend, loading }) {
   return (
     <div className="chat-input-container">
 
-      {/* =====================================================
-          INPUT FORM
-      ===================================================== */}
+      {/* INPUT FORM */}
 
       <form
         className="chat-input-wrapper"
         onSubmit={send}
       >
 
-        {/* ===================================================
-            IMAGE PREVIEW
-        =================================================== */}
+        {/* IMAGE PREVIEW */}
 
         {attachment && (
           <motion.div
@@ -434,9 +528,7 @@ function ChatInput({ onSend, loading }) {
 
         <div className="chat-input-box">
 
-          {/* =================================================
-              HIDDEN IMAGE INPUT
-          ================================================= */}
+          {/* HIDDEN IMAGE INPUT */}
 
           <input
             ref={fileRef}
@@ -446,24 +538,25 @@ function ChatInput({ onSend, loading }) {
             onChange={handleFile}
           />
 
-          {/* =================================================
-              ATTACH BUTTON
-          ================================================= */}
+          {/* ATTACH */}
 
           <button
             type="button"
             className="input-action-button"
-            onClick={() => fileRef.current?.click()}
-            disabled={loading || recording}
+            onClick={() =>
+              fileRef.current?.click()
+            }
+            disabled={
+              loading ||
+              recording
+            }
             aria-label="Attach image"
             title="Attach image"
           >
             <Plus size={20} />
           </button>
 
-          {/* =================================================
-              TEXTAREA
-          ================================================= */}
+          {/* TEXTAREA */}
 
           <textarea
             ref={textareaRef}
@@ -481,20 +574,18 @@ function ChatInput({ onSend, loading }) {
             aria-label="Message"
           />
 
-          {/* =================================================
-              ACTION BUTTONS
-          ================================================= */}
+          {/* ACTION BUTTONS */}
 
           <div className="input-actions">
 
-            {/* ===============================================
-                MICROPHONE
-            =============================================== */}
+            {/* MICROPHONE */}
 
             <motion.button
               type="button"
               className={`input-action-button ${
-                recording ? "recording" : ""
+                recording
+                  ? "recording"
+                  : ""
               }`}
               onClick={toggleVoice}
               disabled={loading}
@@ -510,17 +601,19 @@ function ChatInput({ onSend, loading }) {
                     ? "Voice input"
                     : "Voice input not supported"
               }
-
               animate={
                 recording
                   ? {
-                      scale: [1, 1.08, 1],
+                      scale: [
+                        1,
+                        1.08,
+                        1,
+                      ],
                     }
                   : {
                       scale: 1,
                     }
               }
-
               transition={
                 recording
                   ? {
@@ -543,9 +636,7 @@ function ChatInput({ onSend, loading }) {
               )}
             </motion.button>
 
-            {/* ===============================================
-                SEND
-            =============================================== */}
+            {/* SEND */}
 
             <motion.button
               type="submit"
@@ -555,7 +646,6 @@ function ChatInput({ onSend, loading }) {
                 loading ||
                 recording
               }
-
               whileHover={
                 hasContent &&
                 !loading &&
@@ -563,7 +653,6 @@ function ChatInput({ onSend, loading }) {
                   ? { scale: 1.05 }
                   : undefined
               }
-
               whileTap={
                 hasContent &&
                 !loading &&
@@ -571,7 +660,6 @@ function ChatInput({ onSend, loading }) {
                   ? { scale: 0.94 }
                   : undefined
               }
-
               aria-label="Send message"
               title="Send message"
             >
@@ -589,9 +677,7 @@ function ChatInput({ onSend, loading }) {
         </div>
       </form>
 
-      {/* =====================================================
-          RECORDING STATUS
-      ===================================================== */}
+      {/* RECORDING STATUS */}
 
       {recording && (
         <motion.div
@@ -611,9 +697,7 @@ function ChatInput({ onSend, loading }) {
         </motion.div>
       )}
 
-      {/* =====================================================
-          DISCLAIMER
-      ===================================================== */}
+      {/* DISCLAIMER */}
 
       <p className="disclaimer">
         Lumora AI can make mistakes. Check important

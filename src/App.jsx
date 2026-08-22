@@ -29,7 +29,10 @@ function App() {
   ========================================================= */
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode)
+    document.documentElement.classList.toggle(
+      "dark",
+      darkMode
+    )
 
     try {
       localStorage.setItem(
@@ -63,7 +66,10 @@ function App() {
     window.addEventListener("resize", handleResize)
 
     return () => {
-      window.removeEventListener("resize", handleResize)
+      window.removeEventListener(
+        "resize",
+        handleResize
+      )
     }
   }, [])
 
@@ -81,13 +87,19 @@ function App() {
         })
 
       if (error) {
-        console.error("Load chats error:", error)
+        console.error(
+          "Load chats error:",
+          error
+        )
         return
       }
 
       setChats(data || [])
     } catch (error) {
-      console.error("Load chats exception:", error)
+      console.error(
+        "Load chats exception:",
+        error
+      )
     }
   }
 
@@ -109,10 +121,14 @@ function App() {
         .single()
 
       if (error) {
-        console.error("Create chat error:", error)
+        console.error(
+          "Create chat error:",
+          error
+        )
 
         throw new Error(
-          error.message || "Unable to create chat."
+          error.message ||
+            "Unable to create chat."
         )
       }
 
@@ -127,7 +143,11 @@ function App() {
 
       return data
     } catch (error) {
-      console.error("Create chat exception:", error)
+      console.error(
+        "Create chat exception:",
+        error
+      )
+
       throw error
     }
   }
@@ -149,40 +169,44 @@ function App() {
         })
 
       if (error) {
-        console.error("Load messages error:", error)
+        console.error(
+          "Load messages error:",
+          error
+        )
         return
       }
 
-      const formattedMessages = (data || []).map(
-        (message) => {
-          try {
-            const parsed = JSON.parse(
-              message.content
-            )
+      const formattedMessages = (
+        data || []
+      ).map((message) => {
+        try {
+          const parsed = JSON.parse(
+            message.content
+          )
 
-            if (
-              parsed &&
-              typeof parsed === "object"
-            ) {
-              return {
-                id: message.id,
-                role: message.role,
-                content: parsed.text || "",
-                image: parsed.image || null,
-              }
+          if (
+            parsed &&
+            typeof parsed === "object"
+          ) {
+            return {
+              id: message.id,
+              role: message.role,
+              content: parsed.text || "",
+              image:
+                parsed.image || null,
             }
-          } catch {
-            // Normal text message
           }
-
-          return {
-            id: message.id,
-            role: message.role,
-            content: message.content || "",
-            image: null,
-          }
+        } catch {
+          // Normal text message
         }
-      )
+
+        return {
+          id: message.id,
+          role: message.role,
+          content: message.content || "",
+          image: null,
+        }
+      })
 
       setMessages(formattedMessages)
       setActiveChat(chatId)
@@ -354,6 +378,15 @@ function App() {
     const cleanText =
       text?.trim() || ""
 
+    /*
+      Allow:
+      1. Text only
+      2. Image + text
+
+      Image-only messages are handled separately
+      because the current backend requires question text.
+    */
+
     if (
       (!cleanText && !image) ||
       loading
@@ -378,7 +411,9 @@ function App() {
     try {
       let chatId = activeChat
 
-      /* CREATE CHAT */
+      /* =====================================================
+         CREATE CHAT
+      ===================================================== */
 
       if (!chatId) {
         const chat = await createChat(
@@ -389,7 +424,9 @@ function App() {
         chatId = chat.id
       }
 
-      /* SAVE USER MESSAGE */
+      /* =====================================================
+         SAVE USER MESSAGE
+      ===================================================== */
 
       await saveMessage(
         chatId,
@@ -398,7 +435,44 @@ function App() {
         image
       )
 
-      /* API REQUEST */
+      /* =====================================================
+         IMAGE ONLY
+         
+         Your current backend rejects empty questions.
+         Therefore don't call /api/ask with an empty question.
+         
+         The image is already displayed and saved in Supabase.
+      ===================================================== */
+
+      if (!cleanText && image) {
+        const assistantMessage = {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content:
+            "Image attached successfully. Please add a message describing what you want me to do with the image.",
+          image: null,
+        }
+
+        setMessages((previous) => [
+          ...previous,
+          assistantMessage,
+        ])
+
+        await saveMessage(
+          chatId,
+          "assistant",
+          assistantMessage.content,
+          null
+        )
+
+        await loadChats()
+
+        return
+      }
+
+      /* =====================================================
+         API REQUEST
+      ===================================================== */
 
       const response = await fetch(
         "/api/ask",
@@ -427,14 +501,18 @@ function App() {
       let data
 
       try {
-        data = JSON.parse(responseText)
+        data = JSON.parse(
+          responseText
+        )
       } catch {
         throw new Error(
           "API returned invalid JSON."
         )
       }
 
-      /* GET AI ANSWER */
+      /* =====================================================
+         GET AI ANSWER
+      ===================================================== */
 
       const answer =
         data?.answer ||
@@ -448,13 +526,16 @@ function App() {
         )
       }
 
-      /* ADD ASSISTANT MESSAGE */
+      /* =====================================================
+         ADD ASSISTANT MESSAGE
+      ===================================================== */
 
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: answer,
-        image: data?.image || null,
+        image:
+          data?.image || null,
       }
 
       setMessages((previous) => [
@@ -462,7 +543,9 @@ function App() {
         assistantMessage,
       ])
 
-      /* SAVE ASSISTANT MESSAGE */
+      /* =====================================================
+         SAVE ASSISTANT MESSAGE
+      ===================================================== */
 
       await saveMessage(
         chatId,
@@ -471,7 +554,9 @@ function App() {
         data?.image || null
       )
 
-      /* REFRESH SIDEBAR */
+      /* =====================================================
+         REFRESH SIDEBAR
+      ===================================================== */
 
       await loadChats()
     } catch (error) {
@@ -530,7 +615,9 @@ function App() {
 
       <main className="main-content">
 
-        {/* HEADER */}
+        {/* ===================================================
+            HEADER
+        =================================================== */}
 
         <motion.header
           className="chat-header"
@@ -551,7 +638,8 @@ function App() {
             className="menu-button"
             onClick={() =>
               setSidebarOpen(
-                (previous) => !previous
+                (previous) =>
+                  !previous
               )
             }
             aria-label={
@@ -612,7 +700,9 @@ function App() {
           </button>
         </motion.header>
 
-        {/* CHAT AREA */}
+        {/* ===================================================
+            CHAT AREA
+        =================================================== */}
 
         <section className="messages-area">
           {messages.length === 0 ? (
@@ -697,7 +787,9 @@ function App() {
           )}
         </section>
 
-        {/* INPUT */}
+        {/* ===================================================
+            INPUT
+        =================================================== */}
 
         <ChatInput
           onSend={sendMessage}
