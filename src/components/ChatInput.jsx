@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { motion } from "motion/react"
 import {
   Plus,
@@ -21,6 +21,19 @@ function ChatInput({ onSend, loading }) {
 
   const hasContent = Boolean(input.trim() || attachment)
 
+  // Cleanup microphone when component unmounts
+  useEffect(() => {
+    return () => {
+      if (recorderRef.current?.state !== "inactive") {
+        recorderRef.current?.stop()
+      }
+
+      streamRef.current?.getTracks().forEach((track) => {
+        track.stop()
+      })
+    }
+  }, [])
+
   // Send message
   const send = (e) => {
     e?.preventDefault()
@@ -37,7 +50,8 @@ function ChatInput({ onSend, loading }) {
     }
   }
 
-  // Enter = send, Shift + Enter = new line
+  // Enter = send
+  // Shift + Enter = new line
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -48,6 +62,7 @@ function ChatInput({ onSend, loading }) {
   // Auto-growing textarea
   const handleChange = (e) => {
     const value = e.target.value
+
     setInput(value)
 
     e.target.style.height = "auto"
@@ -60,15 +75,18 @@ function ChatInput({ onSend, loading }) {
   // Image upload
   const handleFile = (e) => {
     const file = e.target.files?.[0]
+
     if (!file) return
 
     if (!file.type.startsWith("image/")) {
       alert("Please select an image.")
+      e.target.value = ""
       return
     }
 
     if (file.size > 2 * 1024 * 1024) {
       alert("Image must be smaller than 2MB.")
+      e.target.value = ""
       return
     }
 
@@ -82,20 +100,59 @@ function ChatInput({ onSend, loading }) {
       })
     }
 
+    reader.onerror = () => {
+      alert("Unable to read this image.")
+    }
+
     reader.readAsDataURL(file)
+
+    // Allow selecting the same image again
     e.target.value = ""
+  }
+
+  // Remove attachment
+  const removeAttachment = () => {
+    setAttachment(null)
+
+    if (fileRef.current) {
+      fileRef.current.value = ""
+    }
   }
 
   // Voice recording
   const toggleVoice = async () => {
+    // Stop recording
     if (recording) {
-      recorderRef.current?.stop()
+      try {
+        if (recorderRef.current?.state !== "inactive") {
+          recorderRef.current.stop()
+        }
+      } catch (error) {
+        console.error("Error stopping recorder:", error)
+      }
 
-      streamRef.current
-        ?.getTracks()
-        .forEach((track) => track.stop())
+      streamRef.current?.getTracks().forEach((track) => {
+        track.stop()
+      })
 
+      recorderRef.current = null
+      streamRef.current = null
       setRecording(false)
+
+      return
+    }
+
+    // Check browser support
+    if (
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
+      alert("Voice recording is not supported in this browser.")
+      return
+    }
+
+    if (typeof MediaRecorder === "undefined") {
+      alert("Voice recording is not supported in this browser.")
       return
     }
 
@@ -108,25 +165,58 @@ function ChatInput({ onSend, loading }) {
       streamRef.current = stream
 
       const recorder = new MediaRecorder(stream)
+
       recorderRef.current = recorder
 
+      recorder.onstart = () => {
+        setRecording(true)
+      }
+
+      recorder.onerror = (event) => {
+        console.error("Recorder error:", event)
+
+        stream.getTracks().forEach((track) => {
+          track.stop()
+        })
+
+        setRecording(false)
+      }
+
       recorder.onstop = () => {
-        stream
-          .getTracks()
-          .forEach((track) => track.stop())
+        stream.getTracks().forEach((track) => {
+          track.stop()
+        })
+
+        streamRef.current = null
+        recorderRef.current = null
+        setRecording(false)
       }
 
       recorder.start()
-      setRecording(true)
     } catch (error) {
       console.error("Microphone error:", error)
-      alert("Microphone permission is required.")
+
+      streamRef.current?.getTracks().forEach((track) => {
+        track.stop()
+      })
+
+      streamRef.current = null
+      recorderRef.current = null
       setRecording(false)
+
+      if (error?.name === "NotAllowedError") {
+        alert(
+          "Microphone permission was denied. Please allow microphone access and try again."
+        )
+      } else {
+        alert("Unable to access the microphone.")
+      }
     }
   }
 
   return (
     <div className="chat-input-container">
+      {/* Input form */}
       <form
         className="chat-input-wrapper"
         onSubmit={send}
@@ -135,8 +225,19 @@ function ChatInput({ onSend, loading }) {
         {attachment && (
           <motion.div
             className="image-preview"
-            initial={{ opacity: 0, scale: 0.85, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            initial={{
+              opacity: 0,
+              scale: 0.85,
+              y: 6,
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.18,
+            }}
           >
             <img
               src={attachment.url}
@@ -145,7 +246,7 @@ function ChatInput({ onSend, loading }) {
 
             <button
               type="button"
-              onClick={() => setAttachment(null)}
+              onClick={removeAttachment}
               aria-label="Remove image"
             >
               <X size={13} />
@@ -154,7 +255,7 @@ function ChatInput({ onSend, loading }) {
         )}
 
         <div className="chat-input-box">
-          {/* Image picker */}
+          {/* Hidden image input */}
           <input
             ref={fileRef}
             type="file"
@@ -163,17 +264,21 @@ function ChatInput({ onSend, loading }) {
             onChange={handleFile}
           />
 
+          {/* Attach image */}
           <button
             type="button"
             className="input-action-button"
-            onClick={() => fileRef.current?.click()}
+            onClick={() =>
+              fileRef.current?.click()
+            }
             disabled={loading}
             aria-label="Attach image"
+            title="Attach image"
           >
             <Plus size={20} />
           </button>
 
-          {/* Message */}
+          {/* Message textarea */}
           <textarea
             ref={textareaRef}
             value={input}
@@ -186,8 +291,9 @@ function ChatInput({ onSend, loading }) {
             aria-label="Message"
           />
 
-          {/* Actions */}
+          {/* Input actions */}
           <div className="input-actions">
+            {/* Voice */}
             <button
               type="button"
               className={`input-action-button ${
@@ -200,6 +306,11 @@ function ChatInput({ onSend, loading }) {
                   ? "Stop recording"
                   : "Voice input"
               }
+              title={
+                recording
+                  ? "Stop recording"
+                  : "Voice input"
+              }
             >
               {recording ? (
                 <Square size={15} />
@@ -208,6 +319,7 @@ function ChatInput({ onSend, loading }) {
               )}
             </button>
 
+            {/* Send */}
             <motion.button
               type="submit"
               className="send-button"
@@ -223,6 +335,7 @@ function ChatInput({ onSend, loading }) {
                   : undefined
               }
               aria-label="Send message"
+              title="Send message"
             >
               {loading ? (
                 <Loader2
@@ -237,8 +350,10 @@ function ChatInput({ onSend, loading }) {
         </div>
       </form>
 
-      <p className="input-hint">
-        Lumora AI can make mistakes. Check important information.
+      {/* Disclaimer */}
+      <p className="disclaimer">
+        Lumora AI can make mistakes. Check important
+        information.
       </p>
     </div>
   )

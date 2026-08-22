@@ -36,6 +36,7 @@ button:disabled {
 }
 
 /* APP */
+
 .app {
   min-height: 100vh;
   background: #f7f7f8;
@@ -49,6 +50,7 @@ button:disabled {
 }
 
 /* SIDEBAR */
+
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -118,6 +120,7 @@ button:disabled {
 }
 
 /* SEARCH */
+
 .sidebar-search {
   height: 36px;
   display: flex;
@@ -154,6 +157,7 @@ button:disabled {
 }
 
 /* NEW CHAT */
+
 .new-chat-button {
   width: 100%;
   height: 40px;
@@ -174,6 +178,7 @@ button:disabled {
 }
 
 /* HISTORY */
+
 .chat-history {
   flex: 1;
   min-height: 0;
@@ -197,6 +202,7 @@ button:disabled {
 }
 
 /* CHAT ITEMS */
+
 .chat-item {
   position: relative;
   display: flex;
@@ -251,6 +257,7 @@ button:disabled {
 }
 
 /* MENU */
+
 .chat-menu-button {
   padding: 2px;
   border-radius: 5px;
@@ -329,6 +336,7 @@ button:disabled {
 }
 
 /* OVERLAY */
+
 .sidebar-overlay {
   position: fixed;
   inset: 0;
@@ -338,6 +346,7 @@ button:disabled {
 }
 
 /* MAIN */
+
 .main-content {
   width: 100%;
   min-height: 100vh;
@@ -346,6 +355,7 @@ button:disabled {
 }
 
 /* HEADER */
+
 .chat-header {
   position: sticky;
   top: 0;
@@ -434,6 +444,7 @@ button:disabled {
 }
 
 /* MESSAGES */
+
 .messages-area {
   flex: 1;
   overflow-y: auto;
@@ -506,6 +517,7 @@ button:disabled {
 }
 
 /* TYPING */
+
 .typing-row {
   display: flex;
   align-items: center;
@@ -540,21 +552,22 @@ button:disabled {
 }
 
 .typing-indicator span:nth-child(2) {
-  animation-delay: .15s;
+  animation-delay: 0.15s;
 }
 
 .typing-indicator span:nth-child(3) {
-  animation-delay: .3s;
+  animation-delay: 0.3s;
 }
 
 @keyframes bounce {
   50% {
     transform: translateY(-3px);
-    opacity: .5;
+    opacity: 0.5;
   }
 }
 
 /* WELCOME */
+
 .welcome-screen {
   max-width: 740px;
   margin: auto;
@@ -587,6 +600,7 @@ button:disabled {
 }
 
 /* QUICK PROMPTS */
+
 .quick-prompts {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -626,6 +640,7 @@ button:disabled {
 }
 
 /* INPUT */
+
 .chat-input-container {
   position: fixed;
   right: 0;
@@ -641,6 +656,7 @@ button:disabled {
 }
 
 .chat-input-wrapper {
+  position: relative;
   max-width: 820px;
   min-height: 58px;
   margin: auto;
@@ -704,6 +720,11 @@ button:disabled {
   color: #4f46e5;
 }
 
+.input-action-button.recording {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .send-button {
   background: #18181b;
   color: white;
@@ -723,7 +744,33 @@ button:disabled {
   color: #18181b;
 }
 
+.app.dark .send-button:disabled {
+  background: #3f3f46;
+  color: #71717a;
+}
+
+/* DISCLAIMER */
+
+.disclaimer {
+  width: 100%;
+  max-width: 820px;
+  margin: 6px auto 0;
+  padding: 0 10px;
+  text-align: center;
+  color: #a1a1aa;
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+.app.dark .disclaimer {
+  color: #71717a;
+}
+
 /* IMAGE */
+
 .image-preview {
   position: absolute;
   left: 12px;
@@ -754,6 +801,7 @@ button:disabled {
 }
 
 /* MARKDOWN */
+
 .chat-markdown {
   color: #1f2937;
   font-size: 14px;
@@ -795,6 +843,7 @@ button:disabled {
 }
 
 /* CODE */
+
 .code-block {
   overflow: hidden;
   margin: 10px 0;
@@ -822,6 +871,7 @@ button:disabled {
 }
 
 /* COPY */
+
 .copy-response {
   display: inline-flex;
   gap: 5px;
@@ -835,6 +885,7 @@ button:disabled {
 }
 
 /* DESKTOP */
+
 @media (min-width: 900px) {
   .sidebar {
     transform: translateX(0);
@@ -856,6 +907,7 @@ button:disabled {
 }
 
 /* MOBILE */
+
 @media (max-width: 899px) {
   .sidebar {
     box-shadow: 8px 0 30px #0002;
@@ -863,8 +915,7 @@ button:disabled {
 }
 
 @media (max-width: 600px) {
-  .online-status,
-  .input-hint {
+  .online-status {
     display: none;
   }
 
@@ -878,7 +929,7 @@ button:disabled {
   }
 
   .messages-list {
-    padding: 16px 11px 125px;
+    padding: 16px 11px 130px;
   }
 
   .message-content {
@@ -886,7 +937,7 @@ button:disabled {
   }
 
   .chat-input-container {
-    padding: 8px;
+    padding: 8px 8px 7px;
   }
 
   .chat-input-wrapper {
@@ -898,12 +949,19 @@ button:disabled {
     font-size: 13px;
   }
 
+  .disclaimer {
+    font-size: 8px;
+    margin-top: 5px;
+    padding: 0 6px;
+  }
+
   .sidebar {
     width: min(290px, 88vw);
   }
 }
 
 /* ANIMATION */
+
 .spin {
   animation: spin 1s linear infinite;
 }
@@ -918,8 +976,8 @@ button:disabled {
   *,
   *::before,
   *::after {
-    animation-duration: .01ms !important;
-    transition-duration: .01ms !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }
