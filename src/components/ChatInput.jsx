@@ -19,9 +19,9 @@ function ChatInput({ onSend, loading }) {
   const streamRef = useRef(null)
 
   const hasContent =
-    input.trim().length > 0 || Boolean(attachment)
+    input.trim() || attachment
 
-  /* SEND */
+  /* Send */
   const send = (e) => {
     e?.preventDefault()
 
@@ -34,16 +34,9 @@ function ChatInput({ onSend, loading }) {
 
     setInput("")
     setAttachment(null)
-
-    const textarea =
-      e?.currentTarget?.querySelector("textarea")
-
-    if (textarea) {
-      textarea.style.height = "auto"
-    }
   }
 
-  /* ENTER */
+  /* Keyboard */
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -51,19 +44,18 @@ function ChatInput({ onSend, loading }) {
     }
   }
 
-  /* TEXT */
+  /* Textarea */
   const handleChange = (e) => {
     setInput(e.target.value)
 
     e.target.style.height = "auto"
-
     e.target.style.height = `${Math.min(
       e.target.scrollHeight,
       160
     )}px`
   }
 
-  /* IMAGE */
+  /* Image */
   const handleFile = (e) => {
     const file = e.target.files?.[0]
 
@@ -71,13 +63,11 @@ function ChatInput({ onSend, loading }) {
 
     if (!file.type.startsWith("image/")) {
       alert("Please select an image.")
-      e.target.value = ""
       return
     }
 
     if (file.size > 2 * 1024 * 1024) {
       alert("Image must be smaller than 2MB.")
-      e.target.value = ""
       return
     }
 
@@ -91,20 +81,14 @@ function ChatInput({ onSend, loading }) {
       })
     }
 
-    reader.onerror = () => {
-      alert("Unable to read this image.")
-    }
-
     reader.readAsDataURL(file)
-
     e.target.value = ""
   }
 
-  /* VOICE */
+  /* Voice */
   const toggleVoice = async () => {
     if (recording) {
       recorderRef.current?.stop()
-
       streamRef.current
         ?.getTracks()
         .forEach((track) => track.stop())
@@ -114,13 +98,6 @@ function ChatInput({ onSend, loading }) {
     }
 
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        alert(
-          "Voice recording is not supported in this browser."
-        )
-        return
-      }
-
       const stream =
         await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -128,9 +105,7 @@ function ChatInput({ onSend, loading }) {
 
       streamRef.current = stream
 
-      const recorder =
-        new MediaRecorder(stream)
-
+      const recorder = new MediaRecorder(stream)
       recorderRef.current = recorder
 
       recorder.start()
@@ -143,11 +118,7 @@ function ChatInput({ onSend, loading }) {
       }
     } catch (error) {
       console.error("Microphone error:", error)
-
-      alert(
-        "Microphone permission is required."
-      )
-
+      alert("Microphone permission is required.")
       setRecording(false)
     }
   }
@@ -158,20 +129,18 @@ function ChatInput({ onSend, loading }) {
         className="chat-input-wrapper"
         onSubmit={send}
       >
+        {/* Attachment preview */}
         {attachment && (
           <motion.div
             className="image-preview"
             initial={{
               opacity: 0,
               scale: 0.9,
-              y: 5,
             }}
             animate={{
               opacity: 1,
               scale: 1,
-              y: 0,
             }}
-            transition={{ duration: 0.18 }}
           >
             <img
               src={attachment.url}
@@ -183,8 +152,7 @@ function ChatInput({ onSend, loading }) {
               onClick={() =>
                 setAttachment(null)
               }
-              aria-label="Remove attachment"
-              title="Remove attachment"
+              aria-label="Remove image"
             >
               <X size={13} />
             </button>
@@ -192,8 +160,7 @@ function ChatInput({ onSend, loading }) {
         )}
 
         <div className="chat-input-box">
-
-          {/* PLUS - LEFT */}
+          {/* Image upload */}
           <input
             ref={fileRef}
             type="file"
@@ -204,18 +171,17 @@ function ChatInput({ onSend, loading }) {
 
           <button
             type="button"
-            className="input-action-button add-button"
+            className="input-action-button"
             onClick={() =>
               fileRef.current?.click()
             }
             disabled={loading}
-            aria-label="Add image"
-            title="Add image"
+            aria-label="Attach image"
           >
             <Plus size={20} />
           </button>
 
-          {/* TEXT */}
+          {/* Message */}
           <textarea
             value={input}
             onChange={handleChange}
@@ -224,13 +190,10 @@ function ChatInput({ onSend, loading }) {
             rows={1}
             disabled={loading}
             className="chat-input"
-            aria-label="Message Lumora AI"
           />
 
-          {/* RIGHT ACTIONS */}
+          {/* Actions */}
           <div className="input-actions">
-
-            {/* MICROPHONE */}
             <button
               type="button"
               className={`input-action-button ${
@@ -243,11 +206,6 @@ function ChatInput({ onSend, loading }) {
                   ? "Stop recording"
                   : "Voice input"
               }
-              title={
-                recording
-                  ? "Stop recording"
-                  : "Voice input"
-              }
             >
               {recording ? (
                 <Square size={15} />
@@ -256,15 +214,13 @@ function ChatInput({ onSend, loading }) {
               )}
             </button>
 
-            {/* SEND */}
             <motion.button
               type="submit"
               className="send-button"
               disabled={!hasContent || loading}
-              aria-label="Send message"
               whileHover={
                 hasContent && !loading
-                  ? { scale: 1.04 }
+                  ? { scale: 1.05 }
                   : undefined
               }
               whileTap={
@@ -272,6 +228,7 @@ function ChatInput({ onSend, loading }) {
                   ? { scale: 0.94 }
                   : undefined
               }
+              aria-label="Send message"
             >
               {loading ? (
                 <Loader2
@@ -282,7 +239,6 @@ function ChatInput({ onSend, loading }) {
                 <ArrowUp size={19} />
               )}
             </motion.button>
-
           </div>
         </div>
       </form>

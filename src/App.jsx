@@ -455,18 +455,17 @@ function App() {
           : ""
       }`}
     >
-      <Sidebar
-        chats={chats}
-        activeChat={activeChat}
-        onNewChat={handleNewChat}
-        onSelectChat={loadMessages}
-        onDeleteChat={deleteChat}
-        onRenameChat={renameChat}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-      />
+    <Sidebar
+  chats={chats}
+  activeChat={activeChat}
+  onNewChat={handleNewChat}
+  onSelectChat={loadMessages}
+  onDeleteChat={deleteChat}
+  onRenameChat={renameChat}
+  sidebarOpen={sidebarOpen}
+  setSidebarOpen={setSidebarOpen}
+  darkMode={darkMode}
+/>
 
       <main className="main-content">
         {/* HEADER */}
