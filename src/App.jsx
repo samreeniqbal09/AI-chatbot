@@ -14,10 +14,6 @@ function App() {
   const [activeChat, setActiveChat] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  /* =========================================================
-     DARK MODE
-  ========================================================= */
-
   const [darkMode, setDarkMode] = useState(() => {
     try {
       return localStorage.getItem("lumora-dark-mode") === "true"
@@ -25,10 +21,6 @@ function App() {
       return false
     }
   })
-
-  /* =========================================================
-     MOBILE SIDEBAR
-  ========================================================= */
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -386,9 +378,7 @@ function App() {
     try {
       let chatId = activeChat
 
-      /* -----------------------------------------------------
-         CREATE CHAT WHEN FIRST MESSAGE IS SENT
-      ----------------------------------------------------- */
+      /* CREATE CHAT */
 
       if (!chatId) {
         const chat = await createChat(
@@ -399,9 +389,7 @@ function App() {
         chatId = chat.id
       }
 
-      /* -----------------------------------------------------
-         SAVE USER MESSAGE
-      ----------------------------------------------------- */
+      /* SAVE USER MESSAGE */
 
       await saveMessage(
         chatId,
@@ -410,9 +398,7 @@ function App() {
         image
       )
 
-      /* -----------------------------------------------------
-         API REQUEST
-      ----------------------------------------------------- */
+      /* API REQUEST */
 
       const response = await fetch(
         "/api/ask",
@@ -448,9 +434,7 @@ function App() {
         )
       }
 
-      /* -----------------------------------------------------
-         GET AI ANSWER
-      ----------------------------------------------------- */
+      /* GET AI ANSWER */
 
       const answer =
         data?.answer ||
@@ -464,9 +448,7 @@ function App() {
         )
       }
 
-      /* -----------------------------------------------------
-         ADD ASSISTANT MESSAGE
-      ----------------------------------------------------- */
+      /* ADD ASSISTANT MESSAGE */
 
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
@@ -480,9 +462,7 @@ function App() {
         assistantMessage,
       ])
 
-      /* -----------------------------------------------------
-         SAVE ASSISTANT MESSAGE
-      ----------------------------------------------------- */
+      /* SAVE ASSISTANT MESSAGE */
 
       await saveMessage(
         chatId,
@@ -491,9 +471,7 @@ function App() {
         data?.image || null
       )
 
-      /* -----------------------------------------------------
-         REFRESH SIDEBAR
-      ----------------------------------------------------- */
+      /* REFRESH SIDEBAR */
 
       await loadChats()
     } catch (error) {
@@ -519,11 +497,13 @@ function App() {
   }
 
   /* =========================================================
-     DARK MODE TOGGLE
+     DARK MODE
   ========================================================= */
 
   const toggleDarkMode = () => {
-    setDarkMode((previous) => !previous)
+    setDarkMode(
+      (previous) => !previous
+    )
   }
 
   /* =========================================================
@@ -536,10 +516,6 @@ function App() {
         darkMode ? "dark" : ""
       }`}
     >
-      {/* =====================================================
-          SIDEBAR
-      ===================================================== */}
-
       <Sidebar
         chats={chats}
         activeChat={activeChat}
@@ -552,15 +528,9 @@ function App() {
         darkMode={darkMode}
       />
 
-      {/* =====================================================
-          MAIN CONTENT
-      ===================================================== */}
-
       <main className="main-content">
 
-        {/* ===================================================
-            HEADER
-        =================================================== */}
+        {/* HEADER */}
 
         <motion.header
           className="chat-header"
@@ -576,8 +546,6 @@ function App() {
             duration: 0.3,
           }}
         >
-          {/* MOBILE MENU */}
-
           <button
             type="button"
             className="menu-button"
@@ -600,8 +568,6 @@ function App() {
             <Menu size={21} />
           </button>
 
-          {/* HEADER BRAND */}
-
           <div className="header-center">
             <div className="header-logo">
               <Sparkles size={15} />
@@ -613,7 +579,7 @@ function App() {
               </div>
 
               <div className="header-subtitle">
-                Intelligent Assistant
+                Your Intelligent AI Assistant
               </div>
             </div>
 
@@ -622,8 +588,6 @@ function App() {
               Online
             </span>
           </div>
-
-          {/* DARK MODE */}
 
           <button
             type="button"
@@ -648,9 +612,7 @@ function App() {
           </button>
         </motion.header>
 
-        {/* ===================================================
-            CHAT AREA
-        =================================================== */}
+        {/* CHAT AREA */}
 
         <section className="messages-area">
           {messages.length === 0 ? (
@@ -708,8 +670,6 @@ function App() {
                 />
               ))}
 
-              {/* TYPING INDICATOR */}
-
               {loading && (
                 <motion.div
                   className="typing-row"
@@ -737,9 +697,7 @@ function App() {
           )}
         </section>
 
-        {/* ===================================================
-            INPUT
-        =================================================== */}
+        {/* INPUT */}
 
         <ChatInput
           onSend={sendMessage}

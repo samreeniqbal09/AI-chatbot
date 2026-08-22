@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   Bot,
@@ -28,6 +28,7 @@ function Sidebar({
   const [showRecent, setShowRecent] = useState(true)
   const [openMenu, setOpenMenu] = useState(null)
   const [pinnedChats, setPinnedChats] = useState([])
+
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined"
       ? window.innerWidth < 900
@@ -40,9 +41,11 @@ function Sidebar({
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 900)
+      const mobile = window.innerWidth < 900
 
-      if (window.innerWidth >= 900) {
+      setIsMobile(mobile)
+
+      if (!mobile) {
         setSidebarOpen(false)
       }
     }
@@ -63,8 +66,11 @@ function Sidebar({
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key === "Escape") {
-        setSidebarOpen(false)
         setOpenMenu(null)
+
+        if (isMobile) {
+          setSidebarOpen(false)
+        }
       }
     }
 
@@ -73,7 +79,31 @@ function Sidebar({
     return () => {
       window.removeEventListener("keydown", handleEscape)
     }
-  }, [setSidebarOpen])
+  }, [isMobile, setSidebarOpen])
+
+  /* =========================================================
+     CLOSE MENU WHEN CLICKING OUTSIDE
+  ========================================================= */
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setOpenMenu(null)
+    }
+
+    if (openMenu !== null) {
+      document.addEventListener(
+        "click",
+        handleOutsideClick
+      )
+    }
+
+    return () => {
+      document.removeEventListener(
+        "click",
+        handleOutsideClick
+      )
+    }
+  }, [openMenu])
 
   /* =========================================================
      PREVENT BODY SCROLL ON MOBILE
@@ -97,6 +127,10 @@ function Sidebar({
 
   const filteredChats = useMemo(() => {
     const query = search.trim().toLowerCase()
+
+    if (!query) {
+      return chats.slice(0, 100)
+    }
 
     return chats
       .filter((chat) =>
@@ -133,6 +167,8 @@ function Sidebar({
   ========================================================= */
 
   const newChat = () => {
+    setOpenMenu(null)
+
     onNewChat()
 
     if (isMobile) {
@@ -145,6 +181,8 @@ function Sidebar({
   ========================================================= */
 
   const selectChat = (id) => {
+    setOpenMenu(null)
+
     onSelectChat(id)
 
     if (isMobile) {
@@ -157,11 +195,15 @@ function Sidebar({
   ========================================================= */
 
   const togglePin = (id) => {
-    setPinnedChats((previous) =>
-      previous.includes(id)
-        ? previous.filter((item) => item !== id)
-        : [...previous, id]
-    )
+    setPinnedChats((previous) => {
+      if (previous.includes(id)) {
+        return previous.filter(
+          (item) => item !== id
+        )
+      }
+
+      return [...previous, id]
+    })
 
     setOpenMenu(null)
   }
@@ -171,16 +213,21 @@ function Sidebar({
   ========================================================= */
 
   const renameChat = async (chat) => {
+    setOpenMenu(null)
+
     const title = window.prompt(
       "Rename conversation:",
       chat.title || "New Chat"
     )
 
-    if (!title?.trim()) return
+    if (!title?.trim()) {
+      return
+    }
 
-    await onRenameChat(chat.id, title.trim())
-
-    setOpenMenu(null)
+    await onRenameChat(
+      chat.id,
+      title.trim()
+    )
   }
 
   /* =========================================================
@@ -189,6 +236,7 @@ function Sidebar({
 
   const deleteChat = async (id) => {
     setOpenMenu(null)
+
     await onDeleteChat(id)
   }
 
@@ -228,12 +276,11 @@ function Sidebar({
         }`}
         initial={false}
         animate={{
-          x:
-            isMobile
-              ? sidebarOpen
-                ? 0
-                : "-100%"
-              : 0,
+          x: isMobile
+            ? sidebarOpen
+              ? 0
+              : "-100%"
+            : 0,
         }}
         transition={{
           type: "spring",
@@ -263,7 +310,9 @@ function Sidebar({
 
             <div className="brand-text">
               <h2>Lumora AI</h2>
-              <span>Intelligent AI Assistant</span>
+              <span>
+                Intelligent AI Assistant
+              </span>
             </div>
           </div>
 
@@ -357,13 +406,13 @@ function Sidebar({
         =================================================== */}
 
         <div className="chat-history">
-          {/* SECTION HEADER */}
-
           <button
             className="section-heading"
             type="button"
             onClick={() =>
-              setShowRecent((previous) => !previous)
+              setShowRecent(
+                (previous) => !previous
+              )
             }
             aria-expanded={showRecent}
           >
@@ -412,9 +461,6 @@ function Sidebar({
                     duration: 0.22,
                   },
                 }}
-                style={{
-                  overflow: "hidden",
-                }}
               >
                 {/* =================================================
                     PINNED CHATS
@@ -440,35 +486,52 @@ function Sidebar({
                         duration: 0.2,
                       }}
                     >
-                      {pinned.map((chat, index) => (
-                        <motion.div
-                          key={chat.id}
-                          initial={{
-                            opacity: 0,
-                            x: -8,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            x: 0,
-                          }}
-                          transition={{
-                            duration: 0.2,
-                            delay: index * 0.02,
-                          }}
-                        >
-                          <ChatItem
-                            chat={chat}
-                            activeChat={activeChat}
-                            pinned
-                            openMenu={openMenu}
-                            setOpenMenu={setOpenMenu}
-                            onSelectChat={selectChat}
-                            togglePin={togglePin}
-                            renameChat={renameChat}
-                            deleteChat={deleteChat}
-                          />
-                        </motion.div>
-                      ))}
+                      {pinned.map(
+                        (chat, index) => (
+                          <motion.div
+                            key={chat.id}
+                            initial={{
+                              opacity: 0,
+                              x: -8,
+                            }}
+                            animate={{
+                              opacity: 1,
+                              x: 0,
+                            }}
+                            transition={{
+                              duration: 0.2,
+                              delay:
+                                index * 0.02,
+                            }}
+                          >
+                            <ChatItem
+                              chat={chat}
+                              activeChat={
+                                activeChat
+                              }
+                              pinned
+                              openMenu={
+                                openMenu
+                              }
+                              setOpenMenu={
+                                setOpenMenu
+                              }
+                              onSelectChat={
+                                selectChat
+                              }
+                              togglePin={
+                                togglePin
+                              }
+                              renameChat={
+                                renameChat
+                              }
+                              deleteChat={
+                                deleteChat
+                              }
+                            />
+                          </motion.div>
+                        )
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -478,39 +541,56 @@ function Sidebar({
                 ================================================= */}
 
                 <AnimatePresence initial={false}>
-                  {recent.map((chat, index) => (
-                    <motion.div
-                      key={chat.id}
-                      initial={{
-                        opacity: 0,
-                        y: -8,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                      }}
-                      exit={{
-                        opacity: 0,
-                        y: -8,
-                      }}
-                      transition={{
-                        duration: 0.2,
-                        delay: index * 0.02,
-                        ease: "easeOut",
-                      }}
-                    >
-                      <ChatItem
-                        chat={chat}
-                        activeChat={activeChat}
-                        openMenu={openMenu}
-                        setOpenMenu={setOpenMenu}
-                        onSelectChat={selectChat}
-                        togglePin={togglePin}
-                        renameChat={renameChat}
-                        deleteChat={deleteChat}
-                      />
-                    </motion.div>
-                  ))}
+                  {recent.map(
+                    (chat, index) => (
+                      <motion.div
+                        key={chat.id}
+                        initial={{
+                          opacity: 0,
+                          y: -8,
+                        }}
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                        }}
+                        exit={{
+                          opacity: 0,
+                          y: -8,
+                        }}
+                        transition={{
+                          duration: 0.2,
+                          delay:
+                            index * 0.02,
+                          ease: "easeOut",
+                        }}
+                      >
+                        <ChatItem
+                          chat={chat}
+                          activeChat={
+                            activeChat
+                          }
+                          openMenu={
+                            openMenu
+                          }
+                          setOpenMenu={
+                            setOpenMenu
+                          }
+                          onSelectChat={
+                            selectChat
+                          }
+                          togglePin={
+                            togglePin
+                          }
+                          renameChat={
+                            renameChat
+                          }
+                          deleteChat={
+                            deleteChat
+                          }
+                        />
+                      </motion.div>
+                    )
+                  )}
                 </AnimatePresence>
 
                 {/* =================================================
@@ -542,7 +622,8 @@ function Sidebar({
 
                     {!search && (
                       <span>
-                        Start a new chat to see it here.
+                        Start a new chat to
+                        see it here.
                       </span>
                     )}
                   </motion.div>
@@ -572,9 +653,11 @@ function ChatItem({
   deleteChat,
 }) {
   const menuOpen = openMenu === chat.id
+  const itemRef = useRef(null)
 
   return (
     <motion.div
+      ref={itemRef}
       className={`chat-item ${
         activeChat === chat.id
           ? "chat-item-active"
@@ -616,7 +699,9 @@ function ChatItem({
             menuOpen ? null : chat.id
           )
         }}
-        aria-label="Chat options"
+        aria-label={`Options for ${
+          chat.title || "New Chat"
+        }`}
         aria-expanded={menuOpen}
         title="Chat options"
       >
@@ -654,22 +739,26 @@ function ChatItem({
           >
             <button
               type="button"
-              onClick={() =>
+              onClick={(event) => {
+                event.stopPropagation()
                 togglePin(chat.id)
-              }
+              }}
             >
               <Pin size={14} />
-              {pinned ? "Unpin" : "Pin"}
+              <span>
+                {pinned ? "Unpin" : "Pin"}
+              </span>
             </button>
 
             <button
               type="button"
-              onClick={() =>
+              onClick={(event) => {
+                event.stopPropagation()
                 renameChat(chat)
-              }
+              }}
             >
               <Pencil size={14} />
-              Rename
+              <span>Rename</span>
             </button>
 
             <div className="menu-divider" />
@@ -677,12 +766,13 @@ function ChatItem({
             <button
               className="delete-option"
               type="button"
-              onClick={() =>
+              onClick={(event) => {
+                event.stopPropagation()
                 deleteChat(chat.id)
-              }
+              }}
             >
               <Trash2 size={14} />
-              Delete
+              <span>Delete</span>
             </button>
           </motion.div>
         )}
