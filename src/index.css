@@ -1505,11 +1505,9 @@ TABLET / MOBILE
 .sidebar {
 width: min(290px, 88vw);
 
-```
 transform: translateX(-100%);
 
 box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
-```
 
 }
 
