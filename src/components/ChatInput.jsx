@@ -3,12 +3,9 @@ import { motion } from "motion/react"
 import {
   Plus,
   ArrowUp,
-  File,
-  Image,
   Loader2,
   Mic,
   Square,
-  Sparkles,
   X,
 } from "lucide-react"
 
@@ -21,21 +18,32 @@ function ChatInput({ onSend, loading }) {
   const recorderRef = useRef(null)
   const streamRef = useRef(null)
 
-  const hasContent = input.trim() || attachment
+  const hasContent =
+    input.trim().length > 0 || Boolean(attachment)
 
+  /* SEND */
   const send = (e) => {
     e?.preventDefault()
+
     if (!hasContent || loading) return
 
-    onSend(input.trim(), attachment?.data || null)
+    onSend(
+      input.trim(),
+      attachment?.data || null
+    )
+
     setInput("")
     setAttachment(null)
 
-    if (e?.currentTarget?.querySelector("textarea")) {
-      e.currentTarget.querySelector("textarea").style.height = "auto"
+    const textarea =
+      e?.currentTarget?.querySelector("textarea")
+
+    if (textarea) {
+      textarea.style.height = "auto"
     }
   }
 
+  /* ENTER */
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -43,21 +51,23 @@ function ChatInput({ onSend, loading }) {
     }
   }
 
+  /* TEXT */
   const handleChange = (e) => {
     setInput(e.target.value)
+
     e.target.style.height = "auto"
-    e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`
+
+    e.target.style.height = `${Math.min(
+      e.target.scrollHeight,
+      160
+    )}px`
   }
 
+  /* IMAGE */
   const handleFile = (e) => {
     const file = e.target.files?.[0]
-    if (!file) return
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File must be smaller than 2MB.")
-      e.target.value = ""
-      return
-    }
+    if (!file) return
 
     if (!file.type.startsWith("image/")) {
       alert("Please select an image.")
@@ -65,55 +75,116 @@ function ChatInput({ onSend, loading }) {
       return
     }
 
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image must be smaller than 2MB.")
+      e.target.value = ""
+      return
+    }
+
     const reader = new FileReader()
 
-    reader.onload = () =>
+    reader.onload = () => {
       setAttachment({
         name: file.name,
         url: reader.result,
         data: reader.result,
       })
+    }
+
+    reader.onerror = () => {
+      alert("Unable to read this image.")
+    }
 
     reader.readAsDataURL(file)
+
     e.target.value = ""
   }
 
+  /* VOICE */
   const toggleVoice = async () => {
     if (recording) {
       recorderRef.current?.stop()
-      streamRef.current?.getTracks().forEach((t) => t.stop())
+
+      streamRef.current
+        ?.getTracks()
+        .forEach((track) => track.stop())
+
       setRecording(false)
       return
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      })
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert(
+          "Voice recording is not supported in this browser."
+        )
+        return
+      }
+
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        })
 
       streamRef.current = stream
-      recorderRef.current = new MediaRecorder(stream)
-      recorderRef.current.start()
+
+      const recorder =
+        new MediaRecorder(stream)
+
+      recorderRef.current = recorder
+
+      recorder.start()
       setRecording(true)
-    } catch {
-      alert("Microphone permission is required.")
+
+      recorder.onstop = () => {
+        stream
+          .getTracks()
+          .forEach((track) => track.stop())
+      }
+    } catch (error) {
+      console.error("Microphone error:", error)
+
+      alert(
+        "Microphone permission is required."
+      )
+
+      setRecording(false)
     }
   }
 
   return (
     <div className="chat-input-container">
-      <form className="chat-input-wrapper" onSubmit={send}>
+      <form
+        className="chat-input-wrapper"
+        onSubmit={send}
+      >
         {attachment && (
           <motion.div
             className="image-preview"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{
+              opacity: 0,
+              scale: 0.9,
+              y: 5,
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+            }}
+            transition={{ duration: 0.18 }}
           >
-            <img src={attachment.url} alt={attachment.name} />
+            <img
+              src={attachment.url}
+              alt={attachment.name}
+            />
+
             <button
               type="button"
-              onClick={() => setAttachment(null)}
+              onClick={() =>
+                setAttachment(null)
+              }
               aria-label="Remove attachment"
+              title="Remove attachment"
             >
               <X size={13} />
             </button>
@@ -121,10 +192,30 @@ function ChatInput({ onSend, loading }) {
         )}
 
         <div className="chat-input-box">
-          <div className="input-ai-icon">
-            <Sparkles size={17} />
-          </div>
 
+          {/* PLUS - LEFT */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            hidden
+            onChange={handleFile}
+          />
+
+          <button
+            type="button"
+            className="input-action-button add-button"
+            onClick={() =>
+              fileRef.current?.click()
+            }
+            disabled={loading}
+            aria-label="Add image"
+            title="Add image"
+          >
+            <Plus size={20} />
+          </button>
+
+          {/* TEXT */}
           <textarea
             value={input}
             onChange={handleChange}
@@ -133,27 +224,13 @@ function ChatInput({ onSend, loading }) {
             rows={1}
             disabled={loading}
             className="chat-input"
+            aria-label="Message Lumora AI"
           />
 
+          {/* RIGHT ACTIONS */}
           <div className="input-actions">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleFile}
-            />
 
-            <button
-              type="button"
-              className="input-action-button"
-              onClick={() => fileRef.current?.click()}
-              disabled={loading}
-              title="Attach image or file"
-            >
-              <Plus size={19} />
-            </button>
-
+            {/* MICROPHONE */}
             <button
               type="button"
               className={`input-action-button ${
@@ -161,29 +238,58 @@ function ChatInput({ onSend, loading }) {
               }`}
               onClick={toggleVoice}
               disabled={loading}
-              title={recording ? "Stop recording" : "Voice input"}
+              aria-label={
+                recording
+                  ? "Stop recording"
+                  : "Voice input"
+              }
+              title={
+                recording
+                  ? "Stop recording"
+                  : "Voice input"
+              }
             >
-              {recording ? <Square size={15} /> : <Mic size={18} />}
+              {recording ? (
+                <Square size={15} />
+              ) : (
+                <Mic size={19} />
+              )}
             </button>
 
+            {/* SEND */}
             <motion.button
               type="submit"
               className="send-button"
               disabled={!hasContent || loading}
-              whileTap={hasContent && !loading ? { scale: 0.94 } : undefined}
+              aria-label="Send message"
+              whileHover={
+                hasContent && !loading
+                  ? { scale: 1.04 }
+                  : undefined
+              }
+              whileTap={
+                hasContent && !loading
+                  ? { scale: 0.94 }
+                  : undefined
+              }
             >
               {loading ? (
-                <Loader2 size={18} className="spin" />
+                <Loader2
+                  size={18}
+                  className="spin"
+                />
               ) : (
                 <ArrowUp size={19} />
               )}
             </motion.button>
+
           </div>
         </div>
       </form>
 
       <p className="input-hint">
-        Lumora AI can make mistakes. Check important information.
+        Lumora AI can make mistakes. Check important
+        information.
       </p>
     </div>
   )

@@ -25,28 +25,23 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
   const [windowState, setWindowState] = useState("normal")
 
-  /* =====================================================
+  /* =========================
      THEME
-  ===================================================== */
+  ========================= */
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode)
   }, [darkMode])
 
-  /* =====================================================
-     INITIAL LOAD
-  ===================================================== */
+  /* =========================
+     LOAD CHAT HISTORY
+  ========================= */
 
   useEffect(() => {
     loadChats()
   }, [])
-
-  /* =====================================================
-     CHAT DATABASE
-  ===================================================== */
 
   const loadChats = async () => {
     const { data, error } = await supabase
@@ -64,8 +59,13 @@ function App() {
     setChats(data || [])
   }
 
+  /* =========================
+     CREATE CHAT
+  ========================= */
+
   const createChat = async (text) => {
-    const cleanTitle = text?.trim() || "New Chat"
+    const cleanTitle =
+      text?.trim() || "New Chat"
 
     const title =
       cleanTitle.length > 35
@@ -83,13 +83,23 @@ function App() {
       return null
     }
 
-    setChats((prev) => [data, ...prev])
+    setChats((prev) => [
+      data,
+      ...prev.filter((chat) => chat.id !== data.id),
+    ])
+
     setActiveChat(data.id)
 
     return data
   }
 
+  /* =========================
+     LOAD MESSAGES
+  ========================= */
+
   const loadMessages = async (chatId) => {
+    if (!chatId) return
+
     const { data, error } = await supabase
       .from("chat_messages")
       .select("*")
@@ -120,7 +130,7 @@ function App() {
             }
           }
         } catch {
-          // Normal text message
+          // Regular text message
         }
 
         return {
@@ -137,9 +147,9 @@ function App() {
     setSidebarOpen(false)
   }
 
-  /* =====================================================
+  /* =========================
      NEW CHAT
-  ===================================================== */
+  ========================= */
 
   const handleNewChat = () => {
     setMessages([])
@@ -147,9 +157,9 @@ function App() {
     setSidebarOpen(false)
   }
 
-  /* =====================================================
+  /* =========================
      DELETE CHAT
-  ===================================================== */
+  ========================= */
 
   const deleteChat = async (chatId) => {
     const { error } = await supabase
@@ -172,9 +182,9 @@ function App() {
     }
   }
 
-  /* =====================================================
+  /* =========================
      RENAME CHAT
-  ===================================================== */
+  ========================= */
 
   const renameChat = async (
     chatId,
@@ -197,18 +207,15 @@ function App() {
     setChats((prev) =>
       prev.map((chat) =>
         chat.id === chatId
-          ? {
-              ...chat,
-              title,
-            }
+          ? { ...chat, title }
           : chat
       )
     )
   }
 
-  /* =====================================================
+  /* =========================
      SAVE MESSAGE
-  ===================================================== */
+  ========================= */
 
   const saveMessage = async (
     sessionId,
@@ -232,16 +239,16 @@ function App() {
       })
 
     if (error) {
-      console.error(
-        "Save message:",
-        error
-      )
+      console.error("Save message:", error)
+      return false
     }
+
+    return true
   }
 
-  /* =====================================================
+  /* =========================
      SEND MESSAGE
-  ===================================================== */
+  ========================= */
 
   const sendMessage = async (
     text,
@@ -273,44 +280,43 @@ function App() {
     try {
       let chatId = activeChat
 
-      /* CREATE CHAT */
+      /* CREATE CHAT IF NEEDED */
 
       if (!chatId) {
         const chat = await createChat(
-          cleanText ||
-            "Image conversation"
+          cleanText || "Image conversation"
         )
 
-        chatId = chat?.id
+        if (!chat) {
+          throw new Error(
+            "Unable to create chat session."
+          )
+        }
+
+        chatId = chat.id
       }
 
       /* SAVE USER MESSAGE */
 
-      if (chatId) {
-        await saveMessage(
-          chatId,
-          "user",
-          cleanText,
-          image
-        )
-      }
-
-      /* API */
-
-      const response = await fetch(
-        "/api/ask",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            question: cleanText,
-            image,
-          }),
-        }
+      await saveMessage(
+        chatId,
+        "user",
+        cleanText,
+        image
       )
+
+      /* AI API */
+
+      const response = await fetch("/api/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: cleanText,
+          image,
+        }),
+      })
 
       const responseText =
         await response.text()
@@ -324,9 +330,7 @@ function App() {
       let data
 
       try {
-        data = JSON.parse(
-          responseText
-        )
+        data = JSON.parse(responseText)
       } catch {
         throw new Error(
           "API returned invalid JSON."
@@ -345,7 +349,7 @@ function App() {
         )
       }
 
-      /* AI MESSAGE */
+      /* ADD AI MESSAGE */
 
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
@@ -361,21 +365,18 @@ function App() {
 
       /* SAVE AI MESSAGE */
 
-      if (chatId) {
-        await saveMessage(
-          chatId,
-          "assistant",
-          answer,
-          data.image || null
-        )
-
-        await loadChats()
-      }
-    } catch (error) {
-      console.error(
-        "Chat error:",
-        error
+      await saveMessage(
+        chatId,
+        "assistant",
+        answer,
+        data.image || null
       )
+
+      /* REFRESH RECENT CHATS */
+
+      await loadChats()
+    } catch (error) {
+      console.error("Chat error:", error)
 
       setMessages((prev) => [
         ...prev,
@@ -392,9 +393,9 @@ function App() {
     }
   }
 
-  /* =====================================================
+  /* =========================
      WINDOW CONTROLS
-  ===================================================== */
+  ========================= */
 
   const minimizeWindow = () => {
     setWindowState("minimized")
@@ -409,22 +410,14 @@ function App() {
   }
 
   const closeWindow = () => {
-    /*
-      Browser tabs cannot normally be closed
-      by JavaScript unless opened by script.
-
-      Instead of trying to close the browser,
-      return the chatbot to a clean new-chat state.
-    */
-
     setMessages([])
     setActiveChat(null)
     setSidebarOpen(false)
   }
 
-  /* =====================================================
-     MINIMIZED VIEW
-  ===================================================== */
+  /* =========================
+     MINIMIZED
+  ========================= */
 
   if (windowState === "minimized") {
     return (
@@ -448,9 +441,9 @@ function App() {
     )
   }
 
-  /* =====================================================
-     UI
-  ===================================================== */
+  /* =========================
+     MAIN UI
+  ========================= */
 
   return (
     <div
@@ -462,8 +455,6 @@ function App() {
           : ""
       }`}
     >
-      {/* SIDEBAR */}
-
       <Sidebar
         chats={chats}
         activeChat={activeChat}
@@ -474,12 +465,10 @@ function App() {
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         darkMode={darkMode}
+        setDarkMode={setDarkMode}
       />
 
-      {/* MAIN */}
-
       <main className="main-content">
-
         {/* HEADER */}
 
         <motion.header
@@ -496,9 +485,6 @@ function App() {
             duration: 0.35,
           }}
         >
-
-          {/* MOBILE MENU */}
-
           <button
             type="button"
             className="menu-button"
@@ -510,10 +496,7 @@ function App() {
             <Menu size={21} />
           </button>
 
-          {/* BRAND */}
-
           <div className="header-center">
-
             <div className="header-logo">
               <Sparkles size={15} />
             </div>
@@ -532,15 +515,9 @@ function App() {
               <span className="status-dot" />
               Online
             </span>
-
           </div>
 
-          {/* HEADER ACTIONS */}
-
           <div className="header-actions">
-
-            {/* DARK MODE */}
-
             <button
               type="button"
               className="theme-button"
@@ -559,8 +536,6 @@ function App() {
               )}
             </button>
 
-            {/* MINIMIZE */}
-
             <button
               type="button"
               className="window-button"
@@ -571,34 +546,27 @@ function App() {
               <Minus size={18} />
             </button>
 
-            {/* MAXIMIZE */}
-
             <button
               type="button"
               className="window-button"
               onClick={toggleMaximize}
               aria-label={
-                windowState ===
-                "maximized"
+                windowState === "maximized"
                   ? "Restore"
                   : "Maximize"
               }
               title={
-                windowState ===
-                "maximized"
+                windowState === "maximized"
                   ? "Restore"
                   : "Maximize"
               }
             >
-              {windowState ===
-              "maximized" ? (
+              {windowState === "maximized" ? (
                 <Minimize2 size={16} />
               ) : (
                 <Maximize2 size={16} />
               )}
             </button>
-
-            {/* CLOSE */}
 
             <button
               type="button"
@@ -609,14 +577,12 @@ function App() {
             >
               <X size={18} />
             </button>
-
           </div>
         </motion.header>
 
         {/* MESSAGES */}
 
         <section className="messages-area">
-
           {messages.length === 0 ? (
             <motion.div
               className="welcome-screen"
@@ -632,7 +598,6 @@ function App() {
                 duration: 0.5,
               }}
             >
-
               <motion.div
                 className="welcome-icon"
                 initial={{
@@ -663,19 +628,15 @@ function App() {
               <QuickPrompts
                 onSelect={sendMessage}
               />
-
             </motion.div>
           ) : (
             <div className="messages-list">
-
-              {messages.map(
-                (message) => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                  />
-                )
-              )}
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                />
+              ))}
 
               {loading && (
                 <motion.div
@@ -700,10 +661,8 @@ function App() {
                   </div>
                 </motion.div>
               )}
-
             </div>
           )}
-
         </section>
 
         {/* INPUT */}
@@ -712,7 +671,6 @@ function App() {
           onSend={sendMessage}
           loading={loading}
         />
-
       </main>
     </div>
   )
