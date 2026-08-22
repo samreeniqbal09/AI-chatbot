@@ -13,19 +13,22 @@ function ChatInput({ onSend, loading }) {
   const [input, setInput] = useState("")
   const [attachment, setAttachment] = useState(null)
   const [recording, setRecording] = useState(false)
-  const [voiceSupported, setVoiceSupported] = useState(true)
+  const [voiceSupported, setVoiceSupported] = useState(false)
 
   const fileRef = useRef(null)
   const textareaRef = useRef(null)
   const recognitionRef = useRef(null)
 
-  // Stores text that already existed before voice recognition started
+  // Text that existed before voice input started
   const voiceBaseTextRef = useRef("")
+
+  // Prevent old recognition events from changing the input
+  const voiceSessionRef = useRef(0)
 
   const hasContent = Boolean(input.trim() || attachment)
 
   /* =========================================================
-     CHECK VOICE SUPPORT
+     VOICE SUPPORT
   ========================================================= */
 
   useEffect(() => {
@@ -37,7 +40,7 @@ function ChatInput({ onSend, loading }) {
 
     return () => {
       try {
-        recognitionRef.current?.stop()
+        recognitionRef.current?.abort()
       } catch {
         // Ignore cleanup errors
       }
@@ -45,6 +48,23 @@ function ChatInput({ onSend, loading }) {
       recognitionRef.current = null
     }
   }, [])
+
+  /* =========================================================
+     AUTO RESIZE TEXTAREA
+  ========================================================= */
+
+  const resizeTextarea = () => {
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return
+
+      textareaRef.current.style.height = "auto"
+
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        160
+      )}px`
+    })
+  }
 
   /* =========================================================
      SEND MESSAGE
@@ -81,20 +101,12 @@ function ChatInput({ onSend, loading }) {
   }
 
   /* =========================================================
-     AUTO GROW TEXTAREA
+     TEXT CHANGE
   ========================================================= */
 
   const handleChange = (e) => {
-    const value = e.target.value
-
-    setInput(value)
-
-    e.target.style.height = "auto"
-
-    e.target.style.height = `${Math.min(
-      e.target.scrollHeight,
-      160
-    )}px`
+    setInput(e.target.value)
+    resizeTextarea()
   }
 
   /* =========================================================
@@ -150,12 +162,31 @@ function ChatInput({ onSend, loading }) {
   }
 
   /* =========================================================
-     VOICE INPUT
+     STOP VOICE
   ========================================================= */
 
-  const toggleVoice = () => {
-    if (loading) return
+  const stopVoice = () => {
+    const recognition = recognitionRef.current
 
+    if (!recognition) {
+      setRecording(false)
+      return
+    }
+
+    try {
+      recognition.stop()
+    } catch (error) {
+      console.log("Voice already stopped.")
+    }
+
+    setRecording(false)
+  }
+
+  /* =========================================================
+     START VOICE
+  ========================================================= */
+
+  const startVoice = () => {
     const SpeechRecognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition
@@ -167,125 +198,154 @@ function ChatInput({ onSend, loading }) {
       return
     }
 
-    /* -------------------------------------------------------
-       STOP VOICE INPUT
-    ------------------------------------------------------- */
+    if (loading) return
 
-    if (recording) {
-      try {
-        recognitionRef.current?.stop()
-      } catch (error) {
-        console.error(
-          "Error stopping voice recognition:",
-          error
-        )
-      }
-
-      return
+    // Stop any previous recognition
+    try {
+      recognitionRef.current?.abort()
+    } catch {
+      // Ignore
     }
 
-    /* -------------------------------------------------------
-       START VOICE INPUT
-    ------------------------------------------------------- */
+    const recognition = new SpeechRecognition()
 
-    try {
-      const recognition = new SpeechRecognition()
+    recognitionRef.current = recognition
 
-      recognitionRef.current = recognition
+    /*
+      continuous:
+      Keeps listening instead of stopping after one sentence.
 
-      // Keep listening while user speaks
-      recognition.continuous = true
+      interimResults:
+      Shows speech while you are still talking.
 
-      // Show partial speech results
-      recognition.interimResults = true
+      maxAlternatives:
+      Gives the browser one good transcription result.
+    */
 
-      // Change to "ur-PK" if you want Urdu recognition
-      recognition.lang = "en-US"
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.maxAlternatives = 1
 
-      // Save existing text before recording
-      voiceBaseTextRef.current = input.trim()
+    // Change to "ur-PK" for Urdu.
+    recognition.lang = "en-US"
 
-      recognition.onstart = () => {
-        setRecording(true)
-      }
+    // New voice session ID
+    const sessionId = voiceSessionRef.current + 1
+    voiceSessionRef.current = sessionId
 
-      recognition.onresult = (event) => {
-        let transcript = ""
+    // Save whatever was already typed
+    voiceBaseTextRef.current = input.trim()
 
-        for (
-          let i = event.resultIndex;
-          i < event.results.length;
-          i++
-        ) {
-          transcript +=
-            event.results[i][0].transcript
+    recognition.onstart = () => {
+      if (sessionId !== voiceSessionRef.current) return
+
+      setRecording(true)
+    }
+
+    recognition.onresult = (event) => {
+      if (sessionId !== voiceSessionRef.current) return
+
+      let finalTranscript = ""
+      let interimTranscript = ""
+
+      for (
+        let i = event.resultIndex;
+        i < event.results.length;
+        i++
+      ) {
+        const result = event.results[i]
+
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript
+        } else {
+          interimTranscript += result[0].transcript
         }
-
-        const baseText =
-          voiceBaseTextRef.current
-
-        const newText = baseText
-          ? `${baseText} ${transcript}`.trim()
-          : transcript.trim()
-
-        setInput(newText)
-
-        // Keep textarea height correct
-        requestAnimationFrame(() => {
-          if (textareaRef.current) {
-            textareaRef.current.style.height =
-              "auto"
-
-            textareaRef.current.style.height =
-              `${Math.min(
-                textareaRef.current.scrollHeight,
-                160
-              )}px`
-          }
-        })
       }
 
-      recognition.onerror = (event) => {
-        console.error(
-          "Speech recognition error:",
-          event.error
-        )
+      /*
+        Keep the original typed text,
+        then add recognized speech.
+      */
 
-        setRecording(false)
+      const baseText = voiceBaseTextRef.current
 
-        if (event.error === "not-allowed") {
+      const spokenText = (
+        finalTranscript || interimTranscript
+      ).trim()
+
+      if (!spokenText) return
+
+      const newText = baseText
+        ? `${baseText} ${spokenText}`.trim()
+        : spokenText
+
+      setInput(newText)
+
+      resizeTextarea()
+    }
+
+    recognition.onerror = (event) => {
+      if (sessionId !== voiceSessionRef.current) {
+        return
+      }
+
+      console.error(
+        "Speech recognition error:",
+        event.error
+      )
+
+      setRecording(false)
+      recognitionRef.current = null
+
+      switch (event.error) {
+        case "not-allowed":
+        case "service-not-allowed":
           alert(
             "Microphone permission was denied. Please allow microphone access in your browser."
           )
-        } else if (event.error === "no-speech") {
-          // Don't show an annoying error for silence
-          console.log("No speech detected.")
-        } else if (event.error === "audio-capture") {
+          break
+
+        case "audio-capture":
           alert(
             "No microphone was detected. Please check your microphone."
           )
-        } else if (event.error === "network") {
+          break
+
+        case "network":
           alert(
             "Voice recognition needs an internet connection."
           )
-        } else {
+          break
+
+        case "aborted":
+          // User stopped it. No error needed.
+          break
+
+        case "no-speech":
+          // Don't show an annoying popup for silence.
+          break
+
+        default:
           alert(
             "Voice input could not start. Please try again."
           )
-        }
+      }
+    }
 
-        recognitionRef.current = null
+    recognition.onend = () => {
+      if (sessionId !== voiceSessionRef.current) {
+        return
       }
 
-      recognition.onend = () => {
-        setRecording(false)
-        recognitionRef.current = null
-      }
+      setRecording(false)
+      recognitionRef.current = null
+    }
 
+    try {
       recognition.start()
     } catch (error) {
       console.error(
-        "Voice input error:",
+        "Unable to start speech recognition:",
         error
       )
 
@@ -299,20 +359,45 @@ function ChatInput({ onSend, loading }) {
   }
 
   /* =========================================================
+     TOGGLE VOICE
+  ========================================================= */
+
+  const toggleVoice = () => {
+    if (loading) return
+
+    if (!voiceSupported) {
+      alert(
+        "Voice input is not supported in this browser. Please use Google Chrome or Microsoft Edge."
+      )
+      return
+    }
+
+    if (recording) {
+      stopVoice()
+    } else {
+      startVoice()
+    }
+  }
+
+  /* =========================================================
      RENDER
   ========================================================= */
 
   return (
     <div className="chat-input-container">
 
-      {/* INPUT FORM */}
+      {/* =====================================================
+          INPUT FORM
+      ===================================================== */}
 
       <form
         className="chat-input-wrapper"
         onSubmit={send}
       >
 
-        {/* IMAGE PREVIEW */}
+        {/* ===================================================
+            IMAGE PREVIEW
+        =================================================== */}
 
         {attachment && (
           <motion.div
@@ -349,7 +434,9 @@ function ChatInput({ onSend, loading }) {
 
         <div className="chat-input-box">
 
-          {/* HIDDEN IMAGE INPUT */}
+          {/* =================================================
+              HIDDEN IMAGE INPUT
+          ================================================= */}
 
           <input
             ref={fileRef}
@@ -359,14 +446,14 @@ function ChatInput({ onSend, loading }) {
             onChange={handleFile}
           />
 
-          {/* ATTACH */}
+          {/* =================================================
+              ATTACH BUTTON
+          ================================================= */}
 
           <button
             type="button"
             className="input-action-button"
-            onClick={() =>
-              fileRef.current?.click()
-            }
+            onClick={() => fileRef.current?.click()}
             disabled={loading || recording}
             aria-label="Attach image"
             title="Attach image"
@@ -374,7 +461,9 @@ function ChatInput({ onSend, loading }) {
             <Plus size={20} />
           </button>
 
-          {/* TEXTAREA */}
+          {/* =================================================
+              TEXTAREA
+          ================================================= */}
 
           <textarea
             ref={textareaRef}
@@ -392,11 +481,15 @@ function ChatInput({ onSend, loading }) {
             aria-label="Message"
           />
 
-          {/* ACTION BUTTONS */}
+          {/* =================================================
+              ACTION BUTTONS
+          ================================================= */}
 
           <div className="input-actions">
 
-            {/* VOICE */}
+            {/* ===============================================
+                MICROPHONE
+            =============================================== */}
 
             <motion.button
               type="button"
@@ -404,9 +497,7 @@ function ChatInput({ onSend, loading }) {
                 recording ? "recording" : ""
               }`}
               onClick={toggleVoice}
-              disabled={
-                loading || !voiceSupported
-              }
+              disabled={loading}
               aria-label={
                 recording
                   ? "Stop voice input"
@@ -419,20 +510,23 @@ function ChatInput({ onSend, loading }) {
                     ? "Voice input"
                     : "Voice input not supported"
               }
+
               animate={
                 recording
                   ? {
-                      scale: [1, 1.1, 1],
+                      scale: [1, 1.08, 1],
                     }
                   : {
                       scale: 1,
                     }
               }
+
               transition={
                 recording
                   ? {
-                      duration: 0.8,
+                      duration: 1,
                       repeat: Infinity,
+                      ease: "easeInOut",
                     }
                   : {
                       duration: 0.15,
@@ -449,7 +543,9 @@ function ChatInput({ onSend, loading }) {
               )}
             </motion.button>
 
-            {/* SEND */}
+            {/* ===============================================
+                SEND
+            =============================================== */}
 
             <motion.button
               type="submit"
@@ -459,6 +555,7 @@ function ChatInput({ onSend, loading }) {
                 loading ||
                 recording
               }
+
               whileHover={
                 hasContent &&
                 !loading &&
@@ -466,6 +563,7 @@ function ChatInput({ onSend, loading }) {
                   ? { scale: 1.05 }
                   : undefined
               }
+
               whileTap={
                 hasContent &&
                 !loading &&
@@ -473,6 +571,7 @@ function ChatInput({ onSend, loading }) {
                   ? { scale: 0.94 }
                   : undefined
               }
+
               aria-label="Send message"
               title="Send message"
             >
@@ -490,7 +589,9 @@ function ChatInput({ onSend, loading }) {
         </div>
       </form>
 
-      {/* RECORDING STATUS */}
+      {/* =====================================================
+          RECORDING STATUS
+      ===================================================== */}
 
       {recording && (
         <motion.div
@@ -505,16 +606,20 @@ function ChatInput({ onSend, loading }) {
           }}
         >
           <span className="voice-recording-dot" />
+
           Listening... Speak now
         </motion.div>
       )}
 
-      {/* DISCLAIMER */}
+      {/* =====================================================
+          DISCLAIMER
+      ===================================================== */}
 
       <p className="disclaimer">
         Lumora AI can make mistakes. Check important
         information.
       </p>
+
     </div>
   )
 }
