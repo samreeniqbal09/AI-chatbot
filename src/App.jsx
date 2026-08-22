@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react"
-import {
-  Menu,
-  Moon,
-  Sun,
-  Sparkles,
-  Minus,
-  Maximize2,
-  Minimize2,
-  X,
-} from "lucide-react"
+import { Menu, Moon, Sun, Sparkles } from "lucide-react"
 import { motion } from "motion/react"
 
 import Sidebar from "./components/Sidebar"
@@ -21,24 +12,16 @@ function App() {
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
   const [activeChat, setActiveChat] = useState(null)
-
   const [loading, setLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [windowState, setWindowState] = useState("normal")
 
-  /* =========================
-     THEME
-  ========================= */
-
+  /* THEME */
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode)
   }, [darkMode])
 
-  /* =========================
-     LOAD CHAT HISTORY
-  ========================= */
-
+  /* LOAD CHATS */
   useEffect(() => {
     loadChats()
   }, [])
@@ -47,9 +30,7 @@ function App() {
     const { data, error } = await supabase
       .from("chat_sessions")
       .select("*")
-      .order("created_at", {
-        ascending: false,
-      })
+      .order("created_at", { ascending: false })
 
     if (error) {
       console.error("Load chats:", error)
@@ -59,18 +40,9 @@ function App() {
     setChats(data || [])
   }
 
-  /* =========================
-     CREATE CHAT
-  ========================= */
-
-  const createChat = async (text) => {
-    const cleanTitle =
-      text?.trim() || "New Chat"
-
-    const title =
-      cleanTitle.length > 35
-        ? `${cleanTitle.slice(0, 35)}...`
-        : cleanTitle
+  /* CREATE CHAT */
+  const createChat = async (text = "New Chat") => {
+    const title = text.trim().slice(0, 35) || "New Chat"
 
     const { data, error } = await supabase
       .from("chat_sessions")
@@ -79,8 +51,7 @@ function App() {
       .single()
 
     if (error) {
-      console.error("Create chat:", error)
-      return null
+      throw new Error(error.message || "Unable to create chat.")
     }
 
     setChats((prev) => [
@@ -93,10 +64,7 @@ function App() {
     return data
   }
 
-  /* =========================
-     LOAD MESSAGES
-  ========================= */
-
+  /* LOAD MESSAGES */
   const loadMessages = async (chatId) => {
     if (!chatId) return
 
@@ -104,63 +72,50 @@ function App() {
       .from("chat_messages")
       .select("*")
       .eq("session_id", chatId)
-      .order("created_at", {
-        ascending: true,
-      })
+      .order("created_at", { ascending: true })
 
     if (error) {
       console.error("Load messages:", error)
       return
     }
 
-    const formattedMessages = (data || []).map(
-      ({ id, role, content }) => {
-        try {
-          const parsed = JSON.parse(content)
+    const formatted = (data || []).map((message) => {
+      try {
+        const parsed = JSON.parse(message.content)
 
-          if (
-            parsed &&
-            typeof parsed === "object"
-          ) {
-            return {
-              id,
-              role,
-              content: parsed.text || "",
-              image: parsed.image || null,
-            }
+        if (parsed && typeof parsed === "object") {
+          return {
+            id: message.id,
+            role: message.role,
+            content: parsed.text || "",
+            image: parsed.image || null,
           }
-        } catch {
-          // Regular text message
         }
-
-        return {
-          id,
-          role,
-          content: content || "",
-          image: null,
-        }
+      } catch {
+        // Normal text message
       }
-    )
 
-    setMessages(formattedMessages)
+      return {
+        id: message.id,
+        role: message.role,
+        content: message.content || "",
+        image: null,
+      }
+    })
+
+    setMessages(formatted)
     setActiveChat(chatId)
     setSidebarOpen(false)
   }
 
-  /* =========================
-     NEW CHAT
-  ========================= */
-
+  /* NEW CHAT */
   const handleNewChat = () => {
     setMessages([])
     setActiveChat(null)
     setSidebarOpen(false)
   }
 
-  /* =========================
-     DELETE CHAT
-  ========================= */
-
+  /* DELETE CHAT */
   const deleteChat = async (chatId) => {
     const { error } = await supabase
       .from("chat_sessions")
@@ -182,21 +137,15 @@ function App() {
     }
   }
 
-  /* =========================
-     RENAME CHAT
-  ========================= */
-
-  const renameChat = async (
-    chatId,
-    newTitle
-  ) => {
+  /* RENAME CHAT */
+  const renameChat = async (chatId, newTitle) => {
     const title = newTitle?.trim()
 
     if (!title) return
 
     const { error } = await supabase
       .from("chat_sessions")
-      .update({ title })
+      .update({ title: title.slice(0, 60) })
       .eq("id", chatId)
 
     if (error) {
@@ -207,16 +156,13 @@ function App() {
     setChats((prev) =>
       prev.map((chat) =>
         chat.id === chatId
-          ? { ...chat, title }
+          ? { ...chat, title: title.slice(0, 60) }
           : chat
       )
     )
   }
 
-  /* =========================
-     SAVE MESSAGE
-  ========================= */
-
+  /* SAVE MESSAGE */
   const saveMessage = async (
     sessionId,
     role,
@@ -239,29 +185,15 @@ function App() {
       })
 
     if (error) {
-      console.error("Save message:", error)
-      return false
+      throw new Error(error.message || "Unable to save message.")
     }
-
-    return true
   }
 
-  /* =========================
-     SEND MESSAGE
-  ========================= */
-
-  const sendMessage = async (
-    text,
-    image = null
-  ) => {
+  /* SEND MESSAGE */
+  const sendMessage = async (text, image = null) => {
     const cleanText = text?.trim() || ""
 
-    if (
-      (!cleanText && !image) ||
-      loading
-    ) {
-      return
-    }
+    if ((!cleanText && !image) || loading) return
 
     setLoading(true)
 
@@ -272,31 +204,18 @@ function App() {
       image,
     }
 
-    setMessages((prev) => [
-      ...prev,
-      userMessage,
-    ])
+    setMessages((prev) => [...prev, userMessage])
 
     try {
       let chatId = activeChat
-
-      /* CREATE CHAT IF NEEDED */
 
       if (!chatId) {
         const chat = await createChat(
           cleanText || "Image conversation"
         )
 
-        if (!chat) {
-          throw new Error(
-            "Unable to create chat session."
-          )
-        }
-
         chatId = chat.id
       }
-
-      /* SAVE USER MESSAGE */
 
       await saveMessage(
         chatId,
@@ -304,8 +223,6 @@ function App() {
         cleanText,
         image
       )
-
-      /* AI API */
 
       const response = await fetch("/api/ask", {
         method: "POST",
@@ -318,8 +235,7 @@ function App() {
         }),
       })
 
-      const responseText =
-        await response.text()
+      const responseText = await response.text()
 
       if (!response.ok) {
         throw new Error(
@@ -332,9 +248,7 @@ function App() {
       try {
         data = JSON.parse(responseText)
       } catch {
-        throw new Error(
-          "API returned invalid JSON."
-        )
+        throw new Error("API returned invalid JSON.")
       }
 
       const answer =
@@ -344,12 +258,8 @@ function App() {
         data.message
 
       if (!answer) {
-        throw new Error(
-          "API returned no AI answer."
-        )
+        throw new Error("API returned no AI answer.")
       }
-
-      /* ADD AI MESSAGE */
 
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
@@ -363,16 +273,12 @@ function App() {
         assistantMessage,
       ])
 
-      /* SAVE AI MESSAGE */
-
       await saveMessage(
         chatId,
         "assistant",
         answer,
         data.image || null
       )
-
-      /* REFRESH RECENT CHATS */
 
       await loadChats()
     } catch (error) {
@@ -385,7 +291,7 @@ function App() {
           role: "assistant",
           content:
             "Sorry, something went wrong.\n\n" +
-            error.message,
+            (error?.message || "Please try again."),
         },
       ])
     } finally {
@@ -393,103 +299,32 @@ function App() {
     }
   }
 
-  /* =========================
-     WINDOW CONTROLS
-  ========================= */
-
-  const minimizeWindow = () => {
-    setWindowState("minimized")
-  }
-
-  const toggleMaximize = () => {
-    setWindowState((prev) =>
-      prev === "maximized"
-        ? "normal"
-        : "maximized"
-    )
-  }
-
-  const closeWindow = () => {
-    setMessages([])
-    setActiveChat(null)
-    setSidebarOpen(false)
-  }
-
-  /* =========================
-     MINIMIZED
-  ========================= */
-
-  if (windowState === "minimized") {
-    return (
-      <div
-        className={`app minimized-app ${
-          darkMode ? "dark" : ""
-        }`}
-      >
-        <button
-          type="button"
-          className="restore-button"
-          onClick={() =>
-            setWindowState("normal")
-          }
-        >
-          <Sparkles size={18} />
-          <span>Lumora AI</span>
-          <Maximize2 size={15} />
-        </button>
-      </div>
-    )
-  }
-
-  /* =========================
-     MAIN UI
-  ========================= */
-
   return (
-    <div
-      className={`app ${
-        darkMode ? "dark" : ""
-      } ${
-        windowState === "maximized"
-          ? "app-maximized"
-          : ""
-      }`}
-    >
-    <Sidebar
-  chats={chats}
-  activeChat={activeChat}
-  onNewChat={handleNewChat}
-  onSelectChat={loadMessages}
-  onDeleteChat={deleteChat}
-  onRenameChat={renameChat}
-  sidebarOpen={sidebarOpen}
-  setSidebarOpen={setSidebarOpen}
-  darkMode={darkMode}
-/>
+    <div className={`app ${darkMode ? "dark" : ""}`}>
+      <Sidebar
+        chats={chats}
+        activeChat={activeChat}
+        onNewChat={handleNewChat}
+        onSelectChat={loadMessages}
+        onDeleteChat={deleteChat}
+        onRenameChat={renameChat}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        darkMode={darkMode}
+      />
 
       <main className="main-content">
         {/* HEADER */}
-
         <motion.header
           className="chat-header"
-          initial={{
-            opacity: 0,
-            y: -10,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.35,
-          }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
         >
           <button
             type="button"
             className="menu-button"
-            onClick={() =>
-              setSidebarOpen(true)
-            }
+            onClick={() => setSidebarOpen(true)}
             aria-label="Open sidebar"
           >
             <Menu size={21} />
@@ -501,10 +336,7 @@ function App() {
             </div>
 
             <div className="header-brand-text">
-              <div className="header-title">
-                Lumora AI
-              </div>
-
+              <div className="header-title">Lumora AI</div>
               <div className="header-subtitle">
                 Intelligent Assistant
               </div>
@@ -516,117 +348,47 @@ function App() {
             </span>
           </div>
 
-          <div className="header-actions">
-            <button
-              type="button"
-              className="theme-button"
-              onClick={() =>
-                setDarkMode(
-                  (prev) => !prev
-                )
-              }
-              aria-label="Toggle dark mode"
-              title="Toggle theme"
-            >
-              {darkMode ? (
-                <Sun size={18} />
-              ) : (
-                <Moon size={18} />
-              )}
-            </button>
-
-            <button
-              type="button"
-              className="window-button"
-              onClick={minimizeWindow}
-              aria-label="Minimize"
-              title="Minimize"
-            >
-              <Minus size={18} />
-            </button>
-
-            <button
-              type="button"
-              className="window-button"
-              onClick={toggleMaximize}
-              aria-label={
-                windowState === "maximized"
-                  ? "Restore"
-                  : "Maximize"
-              }
-              title={
-                windowState === "maximized"
-                  ? "Restore"
-                  : "Maximize"
-              }
-            >
-              {windowState === "maximized" ? (
-                <Minimize2 size={16} />
-              ) : (
-                <Maximize2 size={16} />
-              )}
-            </button>
-
-            <button
-              type="button"
-              className="window-button close-window"
-              onClick={closeWindow}
-              aria-label="Close"
-              title="Close"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="theme-button"
+            onClick={() => setDarkMode((prev) => !prev)}
+            aria-label="Toggle dark mode"
+            title="Toggle theme"
+          >
+            {darkMode ? (
+              <Sun size={18} />
+            ) : (
+              <Moon size={18} />
+            )}
+          </button>
         </motion.header>
 
-        {/* MESSAGES */}
-
+        {/* CHAT */}
         <section className="messages-area">
           {messages.length === 0 ? (
             <motion.div
               className="welcome-screen"
-              initial={{
-                opacity: 0,
-                y: 20,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.5,
-              }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
             >
               <motion.div
                 className="welcome-icon"
-                initial={{
-                  scale: 0.85,
-                  opacity: 0,
-                }}
-                animate={{
-                  scale: 1,
-                  opacity: 1,
-                }}
-                transition={{
-                  duration: 0.4,
-                }}
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.35 }}
               >
                 <Sparkles size={27} />
               </motion.div>
 
-              <h1>
-                What can I help you with?
-              </h1>
+              <h1>What can I help you with?</h1>
 
               <p>
-                Ask questions, explore ideas,
-                write code, or learn something
-                new with Lumora AI.
+                Ask questions, explore ideas, write code,
+                or learn something new with Lumora AI.
               </p>
 
-              <QuickPrompts
-                onSelect={sendMessage}
-              />
+              <QuickPrompts onSelect={sendMessage} />
             </motion.div>
           ) : (
             <div className="messages-list">
@@ -640,14 +402,8 @@ function App() {
               {loading && (
                 <motion.div
                   className="typing-row"
-                  initial={{
-                    opacity: 0,
-                    y: 5,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                  }}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
                 >
                   <div className="typing-avatar">
                     <Sparkles size={14} />
@@ -663,8 +419,6 @@ function App() {
             </div>
           )}
         </section>
-
-        {/* INPUT */}
 
         <ChatInput
           onSend={sendMessage}

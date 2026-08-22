@@ -15,28 +15,29 @@ function ChatInput({ onSend, loading }) {
   const [recording, setRecording] = useState(false)
 
   const fileRef = useRef(null)
+  const textareaRef = useRef(null)
   const recorderRef = useRef(null)
   const streamRef = useRef(null)
 
-  const hasContent =
-    input.trim() || attachment
+  const hasContent = Boolean(input.trim() || attachment)
 
-  /* Send */
+  // Send message
   const send = (e) => {
     e?.preventDefault()
 
     if (!hasContent || loading) return
 
-    onSend(
-      input.trim(),
-      attachment?.data || null
-    )
+    onSend(input.trim(), attachment?.data || null)
 
     setInput("")
     setAttachment(null)
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"
+    }
   }
 
-  /* Keyboard */
+  // Enter = send, Shift + Enter = new line
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -44,9 +45,10 @@ function ChatInput({ onSend, loading }) {
     }
   }
 
-  /* Textarea */
+  // Auto-growing textarea
   const handleChange = (e) => {
-    setInput(e.target.value)
+    const value = e.target.value
+    setInput(value)
 
     e.target.style.height = "auto"
     e.target.style.height = `${Math.min(
@@ -55,10 +57,9 @@ function ChatInput({ onSend, loading }) {
     )}px`
   }
 
-  /* Image */
+  // Image upload
   const handleFile = (e) => {
     const file = e.target.files?.[0]
-
     if (!file) return
 
     if (!file.type.startsWith("image/")) {
@@ -85,10 +86,11 @@ function ChatInput({ onSend, loading }) {
     e.target.value = ""
   }
 
-  /* Voice */
+  // Voice recording
   const toggleVoice = async () => {
     if (recording) {
       recorderRef.current?.stop()
+
       streamRef.current
         ?.getTracks()
         .forEach((track) => track.stop())
@@ -108,14 +110,14 @@ function ChatInput({ onSend, loading }) {
       const recorder = new MediaRecorder(stream)
       recorderRef.current = recorder
 
-      recorder.start()
-      setRecording(true)
-
       recorder.onstop = () => {
         stream
           .getTracks()
           .forEach((track) => track.stop())
       }
+
+      recorder.start()
+      setRecording(true)
     } catch (error) {
       console.error("Microphone error:", error)
       alert("Microphone permission is required.")
@@ -129,18 +131,12 @@ function ChatInput({ onSend, loading }) {
         className="chat-input-wrapper"
         onSubmit={send}
       >
-        {/* Attachment preview */}
+        {/* Image preview */}
         {attachment && (
           <motion.div
             className="image-preview"
-            initial={{
-              opacity: 0,
-              scale: 0.9,
-            }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-            }}
+            initial={{ opacity: 0, scale: 0.85, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
           >
             <img
               src={attachment.url}
@@ -149,9 +145,7 @@ function ChatInput({ onSend, loading }) {
 
             <button
               type="button"
-              onClick={() =>
-                setAttachment(null)
-              }
+              onClick={() => setAttachment(null)}
               aria-label="Remove image"
             >
               <X size={13} />
@@ -160,7 +154,7 @@ function ChatInput({ onSend, loading }) {
         )}
 
         <div className="chat-input-box">
-          {/* Image upload */}
+          {/* Image picker */}
           <input
             ref={fileRef}
             type="file"
@@ -172,9 +166,7 @@ function ChatInput({ onSend, loading }) {
           <button
             type="button"
             className="input-action-button"
-            onClick={() =>
-              fileRef.current?.click()
-            }
+            onClick={() => fileRef.current?.click()}
             disabled={loading}
             aria-label="Attach image"
           >
@@ -183,6 +175,7 @@ function ChatInput({ onSend, loading }) {
 
           {/* Message */}
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
@@ -190,6 +183,7 @@ function ChatInput({ onSend, loading }) {
             rows={1}
             disabled={loading}
             className="chat-input"
+            aria-label="Message"
           />
 
           {/* Actions */}
@@ -244,8 +238,7 @@ function ChatInput({ onSend, loading }) {
       </form>
 
       <p className="input-hint">
-        Lumora AI can make mistakes. Check important
-        information.
+        Lumora AI can make mistakes. Check important information.
       </p>
     </div>
   )
