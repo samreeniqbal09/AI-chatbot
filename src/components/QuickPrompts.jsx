@@ -12,86 +12,66 @@ const prompts = [
   {
     icon: Lightbulb,
     title: "Explain a concept",
-    prompt:
-      "Explain a difficult computer science concept in simple words.",
+    description: "Understand difficult topics simply.",
+    prompt: "Explain a difficult computer science concept in simple words.",
   },
   {
     icon: Code2,
     title: "Write some code",
-    prompt:
-      "Write a clean example of a useful programming solution.",
+    description: "Create clean programming solutions.",
+    prompt: "Write a clean example of a useful programming solution.",
   },
   {
     icon: FileText,
     title: "Summarize text",
-    prompt:
-      "Summarize the following text clearly and briefly.",
+    description: "Turn long text into key points.",
+    prompt: "Summarize the following text clearly and briefly.",
   },
   {
     icon: Sparkles,
     title: "Brainstorm ideas",
-    prompt:
-      "Give me some creative ideas for a computer science project.",
+    description: "Generate ideas for your next project.",
+    prompt: "Give me creative ideas for a computer science project.",
   },
   {
     icon: PenLine,
     title: "Improve writing",
-    prompt:
-      "Improve my writing and make it clearer, more polished, and professional.",
+    description: "Make writing clear and professional.",
+    prompt: "Improve my writing and make it clear and professional.",
   },
   {
     icon: MessageCircle,
     title: "Ask anything",
-    prompt:
-      "Tell me something interesting and useful.",
+    description: "Start a conversation about any topic.",
+    prompt: "Tell me something interesting and useful.",
   },
 ]
 
 function QuickPrompts({ onSelect }) {
   return (
     <div className="quick-prompts">
-      {prompts.map((item, index) => {
-        const Icon = item.icon
+      {prompts.map(({ icon: Icon, title, description, prompt }, i) => (
+        <motion.button
+          key={title}
+          type="button"
+          className="quick-prompt-card"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 + i * 0.06, duration: 0.35 }}
+          whileHover={{ y: -3 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => onSelect(prompt)}
+        >
+          <div className="quick-prompt-icon">
+            <Icon size={18} />
+          </div>
 
-        return (
-          <motion.button
-            key={item.title}
-            initial={{
-              opacity: 0,
-              y: 25,
-              scale: 0.96,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              scale: 1,
-            }}
-            transition={{
-              delay: index * 0.08,
-              duration: 0.45,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            whileHover={{
-              y: -5,
-              scale: 1.02,
-            }}
-            whileTap={{
-              scale: 0.97,
-            }}
-            onClick={() => onSelect(item.prompt)}
-            className="quick-prompt-card"
-          >
-            <div className="quick-prompt-icon">
-              <Icon size={20} />
-            </div>
-
-            <div className="quick-prompt-content">
-              <strong>{item.title}</strong>
-              <span>{item.prompt}</span>
-            </div>
-          </motion.button>
-        )
-      })}
+          <div className="quick-prompt-content">
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </div>
+        </motion.button>
+      ))}
     </div>
   )
 }

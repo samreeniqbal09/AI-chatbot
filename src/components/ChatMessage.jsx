@@ -1,26 +1,56 @@
 import { useState } from "react"
 import { motion } from "motion/react"
-import { Bot, User, Copy, Check } from "lucide-react"
+import { Bot, User, Copy, Check, Code2 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+
+function CodeBlock({ children, className }) {
+  const [copied, setCopied] = useState(false)
+  const language = className?.replace("language-", "").trim() || "Code"
+  const code = String(children).replace(/\n$/, "")
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (error) {
+      console.error("Copy failed:", error)
+    }
+  }
+
+  return (
+    <div className="code-block">
+      <div className="code-header">
+        <span>
+          <Code2 size={14} />
+          {language}
+        </span>
+        <button type="button" onClick={copyCode}>
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre>
+        <code>{code}</code>
+      </pre>
+    </div>
+  )
+}
 
 function ChatMessage({ message }) {
   const isUser = message.role === "user"
   const [copied, setCopied] = useState(false)
-
   const content = message.content || ""
   const image = message.image || null
 
-  const handleCopy = async () => {
+  const copyResponse = async () => {
     if (!content) return
 
     try {
       await navigator.clipboard.writeText(content)
       setCopied(true)
-
-      setTimeout(() => {
-        setCopied(false)
-      }, 1500)
+      setTimeout(() => setCopied(false), 1500)
     } catch (error) {
       console.error("Copy failed:", error)
     }
@@ -28,137 +58,91 @@ function ChatMessage({ message }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      className={`message-row ${isUser ? "user-message" : "ai-message"}`}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className={`flex w-full gap-3 px-4 py-3 ${
-        isUser ? "justify-end" : "justify-start"
-      }`}
+      transition={{ duration: 0.2 }}
     >
-      {/* AI AVATAR */}
       {!isUser && (
-        <div
-          className="
-            flex h-9 w-9 shrink-0 items-center justify-center
-            rounded-xl
-            bg-indigo-600
-            text-white
-            shadow-[0_4px_12px_rgba(79,70,229,0.22)]
-          "
-        >
-          <Bot size={17} strokeWidth={2} />
+        <div className="message-avatar ai-avatar">
+          <Bot size={16} />
         </div>
       )}
 
-      {/* MESSAGE CONTENT */}
-      <div
-        className={`group min-w-0 ${
-          isUser ? "max-w-[80%]" : "max-w-[85%]"
-        }`}
-      >
-        <motion.div
-          whileHover={{ y: -1 }}
-          transition={{ duration: 0.15 }}
-          className={`overflow-hidden rounded-2xl px-4 py-3 shadow-sm ${
-            isUser
-              ? "rounded-br-md bg-indigo-600 text-white"
-              : "rounded-bl-md border border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-          }`}
-        >
-          {/* IMAGE */}
+      <div className="message-content">
+        <div className={isUser ? "user-bubble" : "ai-bubble"}>
           {image && (
             <img
               src={image}
               alt="Uploaded"
+              className="message-image"
               loading="lazy"
-              className="
-                mb-3
-                max-h-72
-                max-w-full
-                rounded-xl
-                object-contain
-              "
-              onError={(e) => {
-                e.currentTarget.style.display = "none"
-              }}
+              onError={(e) => (e.currentTarget.style.display = "none")}
             />
           )}
 
-          {/* TEXT */}
-          {content && (
-            <>
-              {isUser ? (
-                <div className="whitespace-pre-wrap break-words text-sm leading-6">
-                  {content}
-                </div>
-              ) : (
-                <div className="chat-markdown break-words">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                  >
-                    {content}
-                  </ReactMarkdown>
-                </div>
-              )}
-            </>
-          )}
-        </motion.div>
+          {isUser ? (
+            content && <div className="user-text">{content}</div>
+          ) : (
+            content && (
+              <div className="chat-markdown">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    pre: ({ children }) => <>{children}</>,
 
-        {/* COPY BUTTON */}
+                    code: ({ className, children, ...props }) =>
+                      className ? (
+                        <CodeBlock className={className}>
+                          {children}
+                        </CodeBlock>
+                      ) : (
+                        <code {...props} className="inline-code">
+                          {children}
+                        </code>
+                      ),
+
+                    h1: ({ children }) => <h1>{children}</h1>,
+                    h2: ({ children }) => <h2>{children}</h2>,
+                    h3: ({ children }) => <h3>{children}</h3>,
+                    blockquote: ({ children }) => (
+                      <blockquote>{children}</blockquote>
+                    ),
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noreferrer">
+                        {children}
+                      </a>
+                    ),
+                    table: ({ children }) => (
+                      <div className="markdown-table">
+                        <table>{children}</table>
+                      </div>
+                    ),
+                    hr: () => <hr />,
+                  }}
+                >
+                  {content}
+                </ReactMarkdown>
+              </div>
+            )
+          )}
+        </div>
+
         {!isUser && content && (
           <button
             type="button"
-            onClick={handleCopy}
-            title={copied ? "Copied" : "Copy response"}
-            className="
-              mt-1.5
-              inline-flex
-              items-center
-              gap-1.5
-              rounded-md
-              px-2
-              py-1
-              text-xs
-              font-medium
-              text-indigo-500
-              transition
-              hover:bg-indigo-50
-              hover:text-indigo-700
-              dark:text-indigo-300
-              dark:hover:bg-indigo-950/40
-              dark:hover:text-indigo-200
-            "
+            className="copy-response"
+            onClick={copyResponse}
           >
-            {copied ? (
-              <>
-                <Check size={13} />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy size={13} />
-                Copy
-              </>
-            )}
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            {copied ? "Copied" : "Copy"}
           </button>
         )}
       </div>
 
-      {/* USER AVATAR */}
       {isUser && (
-        <div
-          className="
-            flex h-9 w-9 shrink-0 items-center justify-center
-            rounded-xl
-            border border-indigo-200
-            bg-indigo-50
-            text-indigo-600
-            dark:border-indigo-800
-            dark:bg-indigo-950/50
-            dark:text-indigo-300
-          "
-        >
-          <User size={17} strokeWidth={2} />
+        <div className="message-avatar user-avatar">
+          <User size={16} />
         </div>
       )}
     </motion.div>

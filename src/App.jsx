@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react"
-import { Menu, Moon, Sun, Sparkles } from "lucide-react"
+import {
+  Menu,
+  Moon,
+  Sun,
+  Sparkles,
+  Minus,
+  Maximize2,
+  Minimize2,
+  X,
+} from "lucide-react"
 import { motion } from "motion/react"
 
 import Sidebar from "./components/Sidebar"
@@ -12,27 +21,40 @@ function App() {
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
   const [activeChat, setActiveChat] = useState(null)
+
   const [loading, setLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  useEffect(() => {
-    loadChats()
-  }, [])
+  const [windowState, setWindowState] = useState("normal")
+
+  /* =====================================================
+     THEME
+  ===================================================== */
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode)
   }, [darkMode])
 
-  /* =========================
-     CHAT HISTORY
-  ========================= */
+  /* =====================================================
+     INITIAL LOAD
+  ===================================================== */
+
+  useEffect(() => {
+    loadChats()
+  }, [])
+
+  /* =====================================================
+     CHAT DATABASE
+  ===================================================== */
 
   const loadChats = async () => {
     const { data, error } = await supabase
       .from("chat_sessions")
       .select("*")
-      .order("created_at", { ascending: false })
+      .order("created_at", {
+        ascending: false,
+      })
 
     if (error) {
       console.error("Load chats:", error)
@@ -43,10 +65,12 @@ function App() {
   }
 
   const createChat = async (text) => {
+    const cleanTitle = text?.trim() || "New Chat"
+
     const title =
-      text.length > 30
-        ? `${text.slice(0, 30)}...`
-        : text || "New Chat"
+      cleanTitle.length > 35
+        ? `${cleanTitle.slice(0, 35)}...`
+        : cleanTitle
 
     const { data, error } = await supabase
       .from("chat_sessions")
@@ -70,49 +94,62 @@ function App() {
       .from("chat_messages")
       .select("*")
       .eq("session_id", chatId)
-      .order("created_at", { ascending: true })
+      .order("created_at", {
+        ascending: true,
+      })
 
     if (error) {
       console.error("Load messages:", error)
       return
     }
 
-    setMessages(
-      (data || []).map(({ id, role, content }) => {
-        let parsedContent = content
-
+    const formattedMessages = (data || []).map(
+      ({ id, role, content }) => {
         try {
-          parsedContent = JSON.parse(content)
+          const parsed = JSON.parse(content)
+
+          if (
+            parsed &&
+            typeof parsed === "object"
+          ) {
+            return {
+              id,
+              role,
+              content: parsed.text || "",
+              image: parsed.image || null,
+            }
+          }
         } catch {
           // Normal text message
-        }
-
-        if (typeof parsedContent === "object") {
-          return {
-            id,
-            role,
-            content: parsedContent.text || "",
-            image: parsedContent.image || null,
-          }
         }
 
         return {
           id,
           role,
-          content: parsedContent,
+          content: content || "",
+          image: null,
         }
-      })
+      }
     )
 
+    setMessages(formattedMessages)
     setActiveChat(chatId)
     setSidebarOpen(false)
   }
+
+  /* =====================================================
+     NEW CHAT
+  ===================================================== */
 
   const handleNewChat = () => {
     setMessages([])
     setActiveChat(null)
     setSidebarOpen(false)
   }
+
+  /* =====================================================
+     DELETE CHAT
+  ===================================================== */
 
   const deleteChat = async (chatId) => {
     const { error } = await supabase
@@ -130,13 +167,48 @@ function App() {
     )
 
     if (activeChat === chatId) {
-      handleNewChat()
+      setMessages([])
+      setActiveChat(null)
     }
   }
 
-  /* =========================
+  /* =====================================================
+     RENAME CHAT
+  ===================================================== */
+
+  const renameChat = async (
+    chatId,
+    newTitle
+  ) => {
+    const title = newTitle?.trim()
+
+    if (!title) return
+
+    const { error } = await supabase
+      .from("chat_sessions")
+      .update({ title })
+      .eq("id", chatId)
+
+    if (error) {
+      console.error("Rename chat:", error)
+      return
+    }
+
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              title,
+            }
+          : chat
+      )
+    )
+  }
+
+  /* =====================================================
      SAVE MESSAGE
-  ========================= */
+  ===================================================== */
 
   const saveMessage = async (
     sessionId,
@@ -160,42 +232,59 @@ function App() {
       })
 
     if (error) {
-      console.error("Save message:", error)
+      console.error(
+        "Save message:",
+        error
+      )
     }
   }
 
-  /* =========================
+  /* =====================================================
      SEND MESSAGE
-  ========================= */
+  ===================================================== */
 
-  const sendMessage = async (text, image = null) => {
+  const sendMessage = async (
+    text,
+    image = null
+  ) => {
     const cleanText = text?.trim() || ""
 
-    if ((!cleanText && !image) || loading) {
+    if (
+      (!cleanText && !image) ||
+      loading
+    ) {
       return
     }
 
     setLoading(true)
 
     const userMessage = {
-      id: Date.now(),
+      id: `user-${Date.now()}`,
       role: "user",
       content: cleanText,
-      image: image || null,
+      image,
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+    ])
 
     try {
       let chatId = activeChat
 
+      /* CREATE CHAT */
+
       if (!chatId) {
         const chat = await createChat(
-          cleanText || "Image conversation"
+          cleanText ||
+            "Image conversation"
         )
 
         chatId = chat?.id
       }
+
+      /* SAVE USER MESSAGE */
 
       if (chatId) {
         await saveMessage(
@@ -206,24 +295,25 @@ function App() {
         )
       }
 
-      /*
-       * Current backend accepts text only.
-       *
-       * We send the text normally.
-       * Image support is stored/displayed separately.
-       */
-      const response = await fetch("/api/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          question: cleanText,
-          image: image || null,
-        }),
-      })
+      /* API */
 
-      const responseText = await response.text()
+      const response = await fetch(
+        "/api/ask",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            question: cleanText,
+            image,
+          }),
+        }
+      )
+
+      const responseText =
+        await response.text()
 
       if (!response.ok) {
         throw new Error(
@@ -234,9 +324,13 @@ function App() {
       let data
 
       try {
-        data = JSON.parse(responseText)
+        data = JSON.parse(
+          responseText
+        )
       } catch {
-        throw new Error("API returned invalid JSON.")
+        throw new Error(
+          "API returned invalid JSON."
+        )
       }
 
       const answer =
@@ -246,11 +340,15 @@ function App() {
         data.message
 
       if (!answer) {
-        throw new Error("API returned no AI answer.")
+        throw new Error(
+          "API returned no AI answer."
+        )
       }
 
+      /* AI MESSAGE */
+
       const assistantMessage = {
-        id: Date.now() + 1,
+        id: `assistant-${Date.now()}`,
         role: "assistant",
         content: answer,
         image: data.image || null,
@@ -260,6 +358,8 @@ function App() {
         ...prev,
         assistantMessage,
       ])
+
+      /* SAVE AI MESSAGE */
 
       if (chatId) {
         await saveMessage(
@@ -272,12 +372,15 @@ function App() {
         await loadChats()
       }
     } catch (error) {
-      console.error("Chat error:", error)
+      console.error(
+        "Chat error:",
+        error
+      )
 
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now() + 1,
+          id: `error-${Date.now()}`,
           role: "assistant",
           content:
             "Sorry, something went wrong.\n\n" +
@@ -289,123 +392,327 @@ function App() {
     }
   }
 
-  /* =========================
+  /* =====================================================
+     WINDOW CONTROLS
+  ===================================================== */
+
+  const minimizeWindow = () => {
+    setWindowState("minimized")
+  }
+
+  const toggleMaximize = () => {
+    setWindowState((prev) =>
+      prev === "maximized"
+        ? "normal"
+        : "maximized"
+    )
+  }
+
+  const closeWindow = () => {
+    /*
+      Browser tabs cannot normally be closed
+      by JavaScript unless opened by script.
+
+      Instead of trying to close the browser,
+      return the chatbot to a clean new-chat state.
+    */
+
+    setMessages([])
+    setActiveChat(null)
+    setSidebarOpen(false)
+  }
+
+  /* =====================================================
+     MINIMIZED VIEW
+  ===================================================== */
+
+  if (windowState === "minimized") {
+    return (
+      <div
+        className={`app minimized-app ${
+          darkMode ? "dark" : ""
+        }`}
+      >
+        <button
+          type="button"
+          className="restore-button"
+          onClick={() =>
+            setWindowState("normal")
+          }
+        >
+          <Sparkles size={18} />
+          <span>Lumora AI</span>
+          <Maximize2 size={15} />
+        </button>
+      </div>
+    )
+  }
+
+  /* =====================================================
      UI
-  ========================= */
+  ===================================================== */
 
   return (
-    <div className={`app ${darkMode ? "dark" : ""}`}>
+    <div
+      className={`app ${
+        darkMode ? "dark" : ""
+      } ${
+        windowState === "maximized"
+          ? "app-maximized"
+          : ""
+      }`}
+    >
+      {/* SIDEBAR */}
+
       <Sidebar
         chats={chats}
         activeChat={activeChat}
         onNewChat={handleNewChat}
         onSelectChat={loadMessages}
         onDeleteChat={deleteChat}
+        onRenameChat={renameChat}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         darkMode={darkMode}
       />
 
+      {/* MAIN */}
+
       <main className="main-content">
+
         {/* HEADER */}
+
         <motion.header
           className="chat-header"
-          initial={{ opacity: 0, y: -15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{
+            opacity: 0,
+            y: -10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.35,
+          }}
         >
+
+          {/* MOBILE MENU */}
+
           <button
+            type="button"
             className="menu-button"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() =>
+              setSidebarOpen(true)
+            }
             aria-label="Open sidebar"
           >
-            <Menu size={22} />
+            <Menu size={21} />
           </button>
 
-          <div className="header-title">
-            <Sparkles size={19} />
-            <span>Lumora AI</span>
+          {/* BRAND */}
+
+          <div className="header-center">
+
+            <div className="header-logo">
+              <Sparkles size={15} />
+            </div>
+
+            <div className="header-brand-text">
+              <div className="header-title">
+                Lumora AI
+              </div>
+
+              <div className="header-subtitle">
+                Intelligent Assistant
+              </div>
+            </div>
+
+            <span className="online-status">
+              <span className="status-dot" />
+              Online
+            </span>
+
           </div>
 
-          <button
-            className="theme-button"
-            onClick={() =>
-              setDarkMode((prev) => !prev)
-            }
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? (
-              <Sun size={20} />
-            ) : (
-              <Moon size={20} />
-            )}
-          </button>
+          {/* HEADER ACTIONS */}
+
+          <div className="header-actions">
+
+            {/* DARK MODE */}
+
+            <button
+              type="button"
+              className="theme-button"
+              onClick={() =>
+                setDarkMode(
+                  (prev) => !prev
+                )
+              }
+              aria-label="Toggle dark mode"
+              title="Toggle theme"
+            >
+              {darkMode ? (
+                <Sun size={18} />
+              ) : (
+                <Moon size={18} />
+              )}
+            </button>
+
+            {/* MINIMIZE */}
+
+            <button
+              type="button"
+              className="window-button"
+              onClick={minimizeWindow}
+              aria-label="Minimize"
+              title="Minimize"
+            >
+              <Minus size={18} />
+            </button>
+
+            {/* MAXIMIZE */}
+
+            <button
+              type="button"
+              className="window-button"
+              onClick={toggleMaximize}
+              aria-label={
+                windowState ===
+                "maximized"
+                  ? "Restore"
+                  : "Maximize"
+              }
+              title={
+                windowState ===
+                "maximized"
+                  ? "Restore"
+                  : "Maximize"
+              }
+            >
+              {windowState ===
+              "maximized" ? (
+                <Minimize2 size={16} />
+              ) : (
+                <Maximize2 size={16} />
+              )}
+            </button>
+
+            {/* CLOSE */}
+
+            <button
+              type="button"
+              className="window-button close-window"
+              onClick={closeWindow}
+              aria-label="Close"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+
+          </div>
         </motion.header>
 
         {/* MESSAGES */}
+
         <section className="messages-area">
+
           {messages.length === 0 ? (
             <motion.div
               className="welcome-screen"
-              initial={{ opacity: 0, y: 35 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{
+                opacity: 0,
+                y: 20,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.5,
+              }}
             >
+
               <motion.div
                 className="welcome-icon"
                 initial={{
-                  scale: 0.8,
+                  scale: 0.85,
                   opacity: 0,
                 }}
                 animate={{
                   scale: 1,
                   opacity: 1,
                 }}
+                transition={{
+                  duration: 0.4,
+                }}
               >
-                <Sparkles size={32} />
+                <Sparkles size={27} />
               </motion.div>
 
               <h1>
-                What would you like to explore today?
+                What can I help you with?
               </h1>
 
               <p>
-                Explore ideas, solve problems, write code,
-                understand concepts, and get intelligent
-                assistance in one place.
+                Ask questions, explore ideas,
+                write code, or learn something
+                new with Lumora AI.
               </p>
 
               <QuickPrompts
                 onSelect={sendMessage}
               />
+
             </motion.div>
           ) : (
             <div className="messages-list">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                />
-              ))}
+
+              {messages.map(
+                (message) => (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                  />
+                )
+              )}
 
               {loading && (
                 <motion.div
-                  className="typing-indicator"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  className="typing-row"
+                  initial={{
+                    opacity: 0,
+                    y: 5,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
                 >
-                  Lumora is thinking...
+                  <div className="typing-avatar">
+                    <Sparkles size={14} />
+                  </div>
+
+                  <div className="typing-indicator">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </motion.div>
               )}
+
             </div>
           )}
+
         </section>
 
         {/* INPUT */}
+
         <ChatInput
           onSend={sendMessage}
           loading={loading}
         />
+
       </main>
     </div>
   )
