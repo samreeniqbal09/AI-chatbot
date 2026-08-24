@@ -1,3 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 243 75% 59%;
+    --radius: 0.65rem;
+  }
+
+  .dark {
+    --background: 240 6% 10%;
+    --foreground: 210 20% 98%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 210 20% 98%;
+    --destructive: 0 63% 61%;
+    --destructive-foreground: 0 0% 100%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 210 20% 98%;
+    --border: 240 4% 24%;
+    --input: 240 4% 24%;
+    --ring: 243 75% 59%;
+  }
+}
+
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
 
 /* =========================================================
@@ -437,105 +476,151 @@ button:disabled {
 
 /* =========================================================
    CHAT OPTIONS MENU
-========================================================= */
+   SOLID / OPAQUE MENU
+  ========================================================= */
 
 .chat-options-menu {
   position: absolute;
   top: 31px;
   right: 5px;
-  z-index: 99999;
-  width: 145px;
-  padding: 5px;
+
+  z-index: 999999;
+
+  width: 218px;
+  padding: 6px;
+
   border: 1px solid #e4e4e7;
-  border-radius: 9px;
+  border-radius: 12px;
+
+  /* IMPORTANT: completely solid */
   background: #ffffff !important;
+  background-color: #ffffff !important;
+
   opacity: 1 !important;
+  visibility: visible !important;
+
   isolation: isolate;
+
   overflow: hidden;
+
   box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.16),
-    0 4px 10px rgba(0, 0, 0, 0.08);
+    0 16px 35px rgba(0, 0, 0, 0.16),
+    0 5px 12px rgba(0, 0, 0, 0.08);
 }
 
+/* Solid layer behind everything */
 .chat-options-menu::before {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: #ffffff;
-  border-radius: 9px;
+
+  z-index: 0;
+
+  background: #ffffff !important;
+  opacity: 1 !important;
+
+  border-radius: 12px;
 }
 
+/* Menu buttons */
 .chat-options-menu button {
   position: relative;
   z-index: 2;
+
   width: 100%;
+  min-height: 38px;
+
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px;
+  gap: 10px;
+
+  padding: 8px 10px;
+
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
+
   background: #ffffff !important;
+  background-color: #ffffff !important;
+
   color: #3f3f46;
-  font-size: 10px;
+
+  font-size: 13px;
+  font-weight: 500;
+
   text-align: left;
+
   opacity: 1 !important;
+
   transition:
     background 0.15s ease,
     color 0.15s ease;
 }
 
+/* Hover */
 .chat-options-menu button:hover {
   background: #f4f4f5 !important;
+  background-color: #f4f4f5 !important;
+  color: #18181b;
 }
 
-.delete-option {
+/* Delete */
+.chat-options-menu .delete-option {
   color: #dc2626 !important;
 }
 
-.delete-option:hover {
+.chat-options-menu .delete-option:hover {
   background: #fef2f2 !important;
+  background-color: #fef2f2 !important;
+  color: #dc2626 !important;
 }
 
-.menu-divider {
+/* Divider */
+.chat-options-menu .menu-divider {
+  position: relative;
+  z-index: 2;
+
   height: 1px;
-  margin: 4px 0;
-  background: #e4e4e7;
+  margin: 4px 2px;
+
+  background: #e4e4e7 !important;
 }
+
 
 /* =========================================================
-   DARK MENU
+   DARK MODE MENU
 ========================================================= */
 
 .sidebar-dark .chat-options-menu {
   background: #27272a !important;
+  background-color: #27272a !important;
   border-color: #3f3f46;
 }
 
 .sidebar-dark .chat-options-menu::before {
-  background: #27272a;
+  background: #27272a !important;
 }
 
 .sidebar-dark .chat-options-menu button {
   background: #27272a !important;
+  background-color: #27272a !important;
   color: #e4e4e7;
 }
 
 .sidebar-dark .chat-options-menu button:hover {
   background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
 }
 
-.sidebar-dark .delete-option {
+.sidebar-dark .chat-options-menu .delete-option {
   color: #f87171 !important;
 }
 
-.sidebar-dark .delete-option:hover {
+.sidebar-dark .chat-options-menu .delete-option:hover {
   background: #451a1a !important;
 }
 
-.sidebar-dark .menu-divider {
-  background: #3f3f46;
+.sidebar-dark .chat-options-menu .menu-divider {
+  background: #3f3f46 !important;
 }
 
 /* =========================================================
@@ -1483,4 +1568,59 @@ button:disabled {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+/* =========================================================
+   FINAL CHAT MENU OVERLAY FIX
+   The opened menu must stay above every other chat item so
+   the chat text underneath can never show through.
+   ========================================================= */
+
+.chat-item:has(.chat-options-menu) {
+  position: relative;
+  z-index: 1000000 !important;
+}
+
+.chat-item:has(.chat-options-menu) .chat-options-menu {
+  z-index: 1000001 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.chat-item:has(.chat-options-menu) .chat-options-menu::before {
+  z-index: -1;
+  background: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.chat-item:has(.chat-options-menu) .chat-options-menu button {
+  position: relative;
+  z-index: 2;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.chat-item:has(.chat-options-menu) .chat-options-menu .menu-divider {
+  position: relative;
+  z-index: 3;
+  background: #e4e4e7 !important;
+}
+
+.sidebar-dark .chat-item:has(.chat-options-menu) .chat-options-menu,
+.sidebar-dark .chat-item:has(.chat-options-menu) .chat-options-menu button {
+  background: #27272a !important;
+  background-color: #27272a !important;
+}
+
+.sidebar-dark .chat-item:has(.chat-options-menu) .chat-options-menu::before {
+  background: #27272a !important;
+}
+
+.sidebar-dark .chat-item:has(.chat-options-menu) .chat-options-menu .menu-divider {
+  background: #3f3f46 !important;
 }

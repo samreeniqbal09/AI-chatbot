@@ -24,6 +24,15 @@ function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Holds the text from a clicked quick-prompt card, plus a
+  // fresh "key" (nonce) each time, so ChatInput can visibly
+  // fill the textarea before sending — even if the same
+  // prompt is clicked twice in a row.
+  const [quickPrompt, setQuickPrompt] = useState({
+    text: "",
+    key: null,
+  })
+
   /* =========================================================
      THEME
   ========================================================= */
@@ -184,9 +193,15 @@ function App() {
             message.content
           )
 
+          // Only treat this as our image-wrapper format if it
+          // actually looks like one (has a "text" key). This
+          // avoids swallowing plain-text messages that happen
+          // to parse as valid JSON (e.g. the user literally
+          // typed `{"a":1}`).
           if (
             parsed &&
-            typeof parsed === "object"
+            typeof parsed === "object" &&
+            "text" in parsed
           ) {
             return {
               id: message.id,
@@ -371,28 +386,11 @@ function App() {
      SEND MESSAGE
   ========================================================= */
 
-  const sendMessage = async (
-    text,
-    image = null
-  ) => {
-    const cleanText =
-      text?.trim() || ""
+  const sendMessage = async (text, image = null) => {
+    const cleanText = text?.trim() || ""
 
-    /*
-      Allow:
-      1. Text only
-      2. Image + text
-
-      Image-only messages are handled separately
-      because the current backend requires question text.
-    */
-
-    if (
-      (!cleanText && !image) ||
-      loading
-    ) {
-      return
-    }
+    // A message must contain either text or an image.
+    if ((!cleanText && !image) || loading) return
 
     setLoading(true)
 
@@ -403,31 +401,21 @@ function App() {
       image,
     }
 
-    setMessages((previous) => [
-      ...previous,
-      userMessage,
-    ])
+    // Show the user's message immediately.
+    setMessages((previous) => [...previous, userMessage])
 
     try {
       let chatId = activeChat
 
-      /* =====================================================
-         CREATE CHAT
-      ===================================================== */
-
+      // Create a Supabase session automatically for the first message.
       if (!chatId) {
         const chat = await createChat(
-          cleanText ||
-            "Image conversation"
+          cleanText || "Image conversation"
         )
-
         chatId = chat.id
       }
 
-      /* =====================================================
-         SAVE USER MESSAGE
-      ===================================================== */
-
+      // Persist the user's message.
       await saveMessage(
         chatId,
         "user",
@@ -435,62 +423,19 @@ function App() {
         image
       )
 
-      /* =====================================================
-         IMAGE ONLY
-         
-         Your current backend rejects empty questions.
-         Therefore don't call /api/ask with an empty question.
-         
-         The image is already displayed and saved in Supabase.
-      ===================================================== */
+      // Send text and image to the existing Vercel API.
+      const response = await fetch("/api/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: cleanText,
+          image,
+        }),
+      })
 
-      if (!cleanText && image) {
-        const assistantMessage = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content:
-            "Image attached successfully. Please add a message describing what you want me to do with the image.",
-          image: null,
-        }
-
-        setMessages((previous) => [
-          ...previous,
-          assistantMessage,
-        ])
-
-        await saveMessage(
-          chatId,
-          "assistant",
-          assistantMessage.content,
-          null
-        )
-
-        await loadChats()
-
-        return
-      }
-
-      /* =====================================================
-         API REQUEST
-      ===================================================== */
-
-      const response = await fetch(
-        "/api/ask",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            question: cleanText,
-            image,
-          }),
-        }
-      )
-
-      const responseText =
-        await response.text()
+      const responseText = await response.text()
 
       if (!response.ok) {
         throw new Error(
@@ -501,18 +446,10 @@ function App() {
       let data
 
       try {
-        data = JSON.parse(
-          responseText
-        )
+        data = JSON.parse(responseText)
       } catch {
-        throw new Error(
-          "API returned invalid JSON."
-        )
+        throw new Error("API returned invalid JSON.")
       }
-
-      /* =====================================================
-         GET AI ANSWER
-      ===================================================== */
 
       const answer =
         data?.answer ||
@@ -521,21 +458,14 @@ function App() {
         data?.message
 
       if (!answer) {
-        throw new Error(
-          "API returned no AI answer."
-        )
+        throw new Error("API returned no AI answer.")
       }
-
-      /* =====================================================
-         ADD ASSISTANT MESSAGE
-      ===================================================== */
 
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: answer,
-        image:
-          data?.image || null,
+        image: data?.image || null,
       }
 
       setMessages((previous) => [
@@ -543,10 +473,7 @@ function App() {
         assistantMessage,
       ])
 
-      /* =====================================================
-         SAVE ASSISTANT MESSAGE
-      ===================================================== */
-
+      // Persist the AI response.
       await saveMessage(
         chatId,
         "assistant",
@@ -554,16 +481,9 @@ function App() {
         data?.image || null
       )
 
-      /* =====================================================
-         REFRESH SIDEBAR
-      ===================================================== */
-
       await loadChats()
     } catch (error) {
-      console.error(
-        "Chat error:",
-        error
-      )
+      console.error("Chat error:", error)
 
       setMessages((previous) => [
         ...previous,
@@ -572,13 +492,26 @@ function App() {
           role: "assistant",
           content:
             "Sorry, something went wrong.\n\n" +
-            (error?.message ||
-              "Please try again."),
+            (error?.message || "Please try again."),
         },
       ])
     } finally {
       setLoading(false)
     }
+  }
+  /* =========================================================
+     QUICK PROMPT SELECT
+
+     Instead of sending immediately, stage the text so
+     ChatInput can visibly fill it into the textarea first,
+     then send it a moment later.
+  ========================================================= */
+
+  const handleQuickPrompt = (promptText) => {
+    setQuickPrompt({
+      text: promptText,
+      key: Date.now(),
+    })
   }
 
   /* =========================================================
@@ -748,7 +681,7 @@ function App() {
               </p>
 
               <QuickPrompts
-                onSelect={sendMessage}
+                onSelect={handleQuickPrompt}
               />
             </motion.div>
           ) : (
@@ -794,6 +727,8 @@ function App() {
         <ChatInput
           onSend={sendMessage}
           loading={loading}
+          prefillText={quickPrompt.text}
+          prefillKey={quickPrompt.key}
         />
       </main>
     </div>

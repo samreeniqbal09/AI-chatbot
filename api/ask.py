@@ -9,7 +9,7 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             # =========================================================
-            # API KEY
+            # OPENROUTER API KEY
             # =========================================================
 
             api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -66,15 +66,12 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # =========================================================
-            # BUILD MULTIMODAL CONTENT
+            # BUILD MULTIMODAL MESSAGE
             # =========================================================
 
             content = []
 
-            # ---------------------------------------------------------
             # TEXT
-            # ---------------------------------------------------------
-
             if question:
                 content.append(
                     {
@@ -83,10 +80,7 @@ class handler(BaseHTTPRequestHandler):
                     }
                 )
 
-            # ---------------------------------------------------------
             # IMAGE
-            # ---------------------------------------------------------
-
             if image:
 
                 if not isinstance(image, str):
@@ -98,14 +92,10 @@ class handler(BaseHTTPRequestHandler):
                     )
                     return
 
-                if not image.startswith(
-                    "data:image/"
-                ):
+                if not image.startswith("data:image/"):
                     self.send_json(
                         {
-                            "answer": (
-                                "Invalid image format."
-                            )
+                            "answer": "Invalid image format."
                         },
                         400,
                     )
@@ -121,7 +111,7 @@ class handler(BaseHTTPRequestHandler):
                 )
 
             # =========================================================
-            # AI REQUEST
+            # SEND TO AI
             # =========================================================
 
             response = client.chat.completions.create(
@@ -135,7 +125,7 @@ class handler(BaseHTTPRequestHandler):
             )
 
             # =========================================================
-            # GET ANSWER
+            # GET AI RESPONSE
             # =========================================================
 
             answer = (
@@ -146,13 +136,13 @@ class handler(BaseHTTPRequestHandler):
             )
 
             # =========================================================
-            # RESPONSE
+            # RETURN RESPONSE
             # =========================================================
 
             self.send_json(
                 {
                     "answer": answer,
-                    "image": None,
+                    "image": image if image else None,
                 },
                 200,
             )
@@ -162,6 +152,7 @@ class handler(BaseHTTPRequestHandler):
         # =============================================================
 
         except json.JSONDecodeError:
+
             self.send_json(
                 {
                     "answer": "Invalid request data."
@@ -189,7 +180,7 @@ class handler(BaseHTTPRequestHandler):
             )
 
     # ===============================================================
-    # OPTIONS
+    # OPTIONS / PREFLIGHT
     # ===============================================================
 
     def do_OPTIONS(self):

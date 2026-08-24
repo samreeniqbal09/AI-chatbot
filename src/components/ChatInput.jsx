@@ -22,7 +22,8 @@ function ChatInput({ onSend, loading }) {
   const voiceBaseTextRef = useRef("")
   const voiceSessionRef = useRef(0)
 
-  const hasContent = Boolean(input.trim() || attachment)
+  const hasContent =
+    Boolean(input.trim()) || Boolean(attachment)
 
   /* =========================================================
      VOICE SUPPORT
@@ -47,7 +48,7 @@ function ChatInput({ onSend, loading }) {
   }, [])
 
   /* =========================================================
-     AUTO RESIZE TEXTAREA
+     AUTO RESIZE
   ========================================================= */
 
   const resizeTextarea = () => {
@@ -67,15 +68,24 @@ function ChatInput({ onSend, loading }) {
      SEND MESSAGE
   ========================================================= */
 
-  const send = (e) => {
-    e?.preventDefault()
+  const send = (event) => {
+    event?.preventDefault()
 
     if (!hasContent || loading || recording) return
 
-    onSend(
-      input.trim(),
-      attachment?.data || null
-    )
+    const text = input.trim()
+    const image = attachment?.data || null
+
+    /*
+      Sends both values to App.jsx:
+
+      onSend(text, image)
+
+      App.jsx then sends them to:
+      /api/ask
+    */
+
+    onSend(text, image)
 
     setInput("")
     setAttachment(null)
@@ -90,14 +100,17 @@ function ChatInput({ onSend, loading }) {
   }
 
   /* =========================================================
-     ENTER = SEND
+     ENTER TO SEND
      SHIFT + ENTER = NEW LINE
   ========================================================= */
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      send(e)
+  const handleKeyDown = (event) => {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault()
+      send(event)
     }
   }
 
@@ -105,13 +118,13 @@ function ChatInput({ onSend, loading }) {
      TEXT CHANGE
   ========================================================= */
 
-  const handleChange = (e) => {
-    setInput(e.target.value)
+  const handleChange = (event) => {
+    setInput(event.target.value)
     resizeTextarea()
   }
 
   /* =========================================================
-     COMPRESS IMAGE
+     IMAGE COMPRESSION
   ========================================================= */
 
   const compressImage = (file) => {
@@ -141,12 +154,14 @@ function ChatInput({ onSend, loading }) {
             height = Math.round(height * ratio)
           }
 
-          const canvas = document.createElement("canvas")
+          const canvas =
+            document.createElement("canvas")
 
           canvas.width = width
           canvas.height = height
 
-          const context = canvas.getContext("2d")
+          const context =
+            canvas.getContext("2d")
 
           if (!context) {
             reject(
@@ -171,10 +186,7 @@ function ChatInput({ onSend, loading }) {
               0.75
             )
 
-          resolve({
-            url: compressedData,
-            data: compressedData,
-          })
+          resolve(compressedData)
         }
 
         image.onerror = () => {
@@ -204,33 +216,39 @@ function ChatInput({ onSend, loading }) {
      IMAGE UPLOAD
   ========================================================= */
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0]
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0]
 
     if (!file) return
 
     if (!file.type.startsWith("image/")) {
       alert("Please select an image.")
-      e.target.value = ""
+      event.target.value = ""
       return
     }
 
-    // Prevent extremely large original files
+    /*
+      Keep the request reasonably small.
+      The backend receives the image as a data URL.
+    */
+
     if (file.size > 8 * 1024 * 1024) {
       alert(
         "Image is too large. Please choose an image smaller than 8MB."
       )
-      e.target.value = ""
+
+      event.target.value = ""
       return
     }
 
     try {
-      const compressed = await compressImage(file)
+      const compressed =
+        await compressImage(file)
 
       setAttachment({
         name: file.name,
-        url: compressed.url,
-        data: compressed.data,
+        url: compressed,
+        data: compressed,
       })
     } catch (error) {
       console.error(
@@ -243,11 +261,11 @@ function ChatInput({ onSend, loading }) {
       )
     }
 
-    e.target.value = ""
+    event.target.value = ""
   }
 
   /* =========================================================
-     REMOVE ATTACHMENT
+     REMOVE IMAGE
   ========================================================= */
 
   const removeAttachment = () => {
@@ -263,7 +281,8 @@ function ChatInput({ onSend, loading }) {
   ========================================================= */
 
   const stopVoice = () => {
-    const recognition = recognitionRef.current
+    const recognition =
+      recognitionRef.current
 
     if (!recognition) {
       setRecording(false)
@@ -273,7 +292,7 @@ function ChatInput({ onSend, loading }) {
     try {
       recognition.stop()
     } catch {
-      console.log("Voice already stopped.")
+      // Already stopped
     }
 
     setRecording(false)
@@ -311,8 +330,6 @@ function ChatInput({ onSend, loading }) {
     recognition.continuous = true
     recognition.interimResults = true
     recognition.maxAlternatives = 1
-
-    // English voice recognition
     recognition.lang = "en-US"
 
     const sessionId =
@@ -342,32 +359,22 @@ function ChatInput({ onSend, loading }) {
         return
       }
 
-      let finalTranscript = ""
-      let interimTranscript = ""
+      let transcript = ""
 
       for (
         let i = event.resultIndex;
         i < event.results.length;
         i++
       ) {
-        const result = event.results[i]
-
-        if (result.isFinal) {
-          finalTranscript +=
-            result[0].transcript
-        } else {
-          interimTranscript +=
-            result[0].transcript
-        }
+        transcript +=
+          event.results[i][0].transcript
       }
 
       const baseText =
         voiceBaseTextRef.current
 
-      const spokenText = (
-        finalTranscript ||
-        interimTranscript
-      ).trim()
+      const spokenText =
+        transcript.trim()
 
       if (!spokenText) return
 
@@ -396,34 +403,27 @@ function ChatInput({ onSend, loading }) {
       setRecording(false)
       recognitionRef.current = null
 
-      switch (event.error) {
-        case "not-allowed":
-        case "service-not-allowed":
-          alert(
-            "Microphone permission was denied. Please allow microphone access in your browser."
-          )
-          break
-
-        case "audio-capture":
-          alert(
-            "No microphone was detected. Please check your microphone."
-          )
-          break
-
-        case "network":
-          alert(
-            "Voice recognition needs an internet connection."
-          )
-          break
-
-        case "aborted":
-        case "no-speech":
-          break
-
-        default:
-          alert(
-            "Voice input could not start. Please try again."
-          )
+      if (
+        event.error === "not-allowed" ||
+        event.error ===
+          "service-not-allowed"
+      ) {
+        alert(
+          "Microphone permission was denied. Please allow microphone access in your browser."
+        )
+      } else if (
+        event.error ===
+        "audio-capture"
+      ) {
+        alert(
+          "No microphone was detected. Please check your microphone."
+        )
+      } else if (
+        event.error === "network"
+      ) {
+        alert(
+          "Voice recognition needs an internet connection."
+        )
       }
     }
 
@@ -449,15 +449,11 @@ function ChatInput({ onSend, loading }) {
 
       setRecording(false)
       recognitionRef.current = null
-
-      alert(
-        "Unable to start voice input. Please try again."
-      )
     }
   }
 
   /* =========================================================
-     TOGGLE VOICE
+     VOICE TOGGLE
   ========================================================= */
 
   const toggleVoice = () => {
@@ -484,14 +480,14 @@ function ChatInput({ onSend, loading }) {
   return (
     <div className="chat-input-container">
 
-      {/* INPUT FORM */}
-
       <form
         className="chat-input-wrapper"
         onSubmit={send}
       >
 
-        {/* IMAGE PREVIEW */}
+        {/* ===================================================
+            IMAGE PREVIEW
+        =================================================== */}
 
         {attachment && (
           <motion.div
@@ -528,7 +524,9 @@ function ChatInput({ onSend, loading }) {
 
         <div className="chat-input-box">
 
-          {/* HIDDEN IMAGE INPUT */}
+          {/* =================================================
+              FILE INPUT
+          ================================================= */}
 
           <input
             ref={fileRef}
@@ -538,7 +536,9 @@ function ChatInput({ onSend, loading }) {
             onChange={handleFile}
           />
 
-          {/* ATTACH */}
+          {/* =================================================
+              ATTACH IMAGE
+          ================================================= */}
 
           <button
             type="button"
@@ -547,8 +547,7 @@ function ChatInput({ onSend, loading }) {
               fileRef.current?.click()
             }
             disabled={
-              loading ||
-              recording
+              loading || recording
             }
             aria-label="Attach image"
             title="Attach image"
@@ -556,7 +555,9 @@ function ChatInput({ onSend, loading }) {
             <Plus size={20} />
           </button>
 
-          {/* TEXTAREA */}
+          {/* =================================================
+              TEXT INPUT
+          ================================================= */}
 
           <textarea
             ref={textareaRef}
@@ -566,19 +567,21 @@ function ChatInput({ onSend, loading }) {
             placeholder={
               recording
                 ? "Listening..."
-                : "Message Lumora AI..."
+                : attachment
+                  ? "Ask something about this image..."
+                  : "Message Lumora AI..."
             }
             rows={1}
             disabled={loading}
             className="chat-input"
-            aria-label="Message"
+            aria-label="Message Lumora AI"
           />
-
-          {/* ACTION BUTTONS */}
 
           <div className="input-actions">
 
-            {/* MICROPHONE */}
+            {/* ===============================================
+                MICROPHONE
+            =============================================== */}
 
             <motion.button
               type="button"
@@ -636,7 +639,9 @@ function ChatInput({ onSend, loading }) {
               )}
             </motion.button>
 
-            {/* SEND */}
+            {/* ===============================================
+                SEND
+            =============================================== */}
 
             <motion.button
               type="submit"
@@ -650,14 +655,18 @@ function ChatInput({ onSend, loading }) {
                 hasContent &&
                 !loading &&
                 !recording
-                  ? { scale: 1.05 }
+                  ? {
+                      scale: 1.05,
+                    }
                   : undefined
               }
               whileTap={
                 hasContent &&
                 !loading &&
                 !recording
-                  ? { scale: 0.94 }
+                  ? {
+                      scale: 0.94,
+                    }
                   : undefined
               }
               aria-label="Send message"
@@ -677,7 +686,9 @@ function ChatInput({ onSend, loading }) {
         </div>
       </form>
 
-      {/* RECORDING STATUS */}
+      {/* =====================================================
+          VOICE STATUS
+      ===================================================== */}
 
       {recording && (
         <motion.div
@@ -692,16 +703,17 @@ function ChatInput({ onSend, loading }) {
           }}
         >
           <span className="voice-recording-dot" />
-
           Listening... Speak now
         </motion.div>
       )}
 
-      {/* DISCLAIMER */}
+      {/* =====================================================
+          DISCLAIMER
+      ===================================================== */}
 
       <p className="disclaimer">
-        Lumora AI can make mistakes. Check important
-        information.
+        Lumora AI can make mistakes. Check
+        important information.
       </p>
 
     </div>
