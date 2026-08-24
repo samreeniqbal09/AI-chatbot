@@ -12,7 +12,9 @@ function App() {
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
   const [activeChat, setActiveChat] = useState(null)
+
   const [loading, setLoading] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -20,17 +22,6 @@ function App() {
     } catch {
       return false
     }
-  })
-
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // Holds the text from a clicked quick-prompt card, plus a
-  // fresh "key" (nonce) each time, so ChatInput can visibly
-  // fill the textarea before sending — even if the same
-  // prompt is clicked twice in a row.
-  const [quickPrompt, setQuickPrompt] = useState({
-    text: "",
-    key: null,
   })
 
   /* =========================================================
@@ -49,7 +40,7 @@ function App() {
         String(darkMode)
       )
     } catch {
-      // Ignore localStorage errors
+      // Ignore storage errors
     }
   }, [darkMode])
 
@@ -62,7 +53,7 @@ function App() {
   }, [])
 
   /* =========================================================
-     RESPONSIVE SIDEBAR
+     MOBILE SIDEBAR
   ========================================================= */
 
   useEffect(() => {
@@ -95,20 +86,11 @@ function App() {
           ascending: false,
         })
 
-      if (error) {
-        console.error(
-          "Load chats error:",
-          error
-        )
-        return
-      }
+      if (error) throw error
 
       setChats(data || [])
     } catch (error) {
-      console.error(
-        "Load chats exception:",
-        error
-      )
+      console.error("Load chats:", error)
     }
   }
 
@@ -118,57 +100,45 @@ function App() {
 
   const createChat = async (text = "New Chat") => {
     const title =
-      text?.trim().slice(0, 35) || "New Chat"
+      text.trim().slice(0, 35) || "New Chat"
 
-    try {
-      const { data, error } = await supabase
-        .from("chat_sessions")
-        .insert({
-          title,
-        })
-        .select()
-        .single()
+    const { data, error } = await supabase
+      .from("chat_sessions")
+      .insert({ title })
+      .select()
+      .single()
 
-      if (error) {
-        console.error(
-          "Create chat error:",
-          error
-        )
+    if (error) {
+      console.error("Create chat:", error)
 
-        throw new Error(
-          error.message ||
-            "Unable to create chat."
-        )
-      }
-
-      setChats((previous) => [
-        data,
-        ...previous.filter(
-          (chat) => chat.id !== data.id
-        ),
-      ])
-
-      setActiveChat(data.id)
-
-      return data
-    } catch (error) {
-      console.error(
-        "Create chat exception:",
-        error
+      throw new Error(
+        error.message ||
+          "Unable to create chat session."
       )
-
-      throw error
     }
+
+    setChats((prev) => [
+      data,
+      ...prev.filter(
+        (chat) => chat.id !== data.id
+      ),
+    ])
+
+    setActiveChat(data.id)
+
+    return data
   }
 
   /* =========================================================
-     LOAD MESSAGES
+     LOAD CHAT MESSAGES
   ========================================================= */
 
   const loadMessages = async (chatId) => {
     if (!chatId) return
 
     try {
+      setLoading(false)
+
       const { data, error } = await supabase
         .from("chat_messages")
         .select("*")
@@ -177,51 +147,38 @@ function App() {
           ascending: true,
         })
 
-      if (error) {
-        console.error(
-          "Load messages error:",
-          error
-        )
-        return
-      }
+      if (error) throw error
 
-      const formattedMessages = (
-        data || []
-      ).map((message) => {
-        try {
-          const parsed = JSON.parse(
-            message.content
-          )
+      const formattedMessages = (data || []).map(
+        (message) => {
+          let content = message.content || ""
+          let image = null
 
-          // Only treat this as our image-wrapper format if it
-          // actually looks like one (has a "text" key). This
-          // avoids swallowing plain-text messages that happen
-          // to parse as valid JSON (e.g. the user literally
-          // typed `{"a":1}`).
-          if (
-            parsed &&
-            typeof parsed === "object" &&
-            "text" in parsed
-          ) {
-            return {
-              id: message.id,
-              role: message.role,
-              content: parsed.text || "",
-              image:
-                parsed.image || null,
+          try {
+            const parsed = JSON.parse(
+              message.content
+            )
+
+            if (
+              parsed &&
+              typeof parsed === "object" &&
+              "text" in parsed
+            ) {
+              content = parsed.text || ""
+              image = parsed.image || null
             }
+          } catch {
+            // Normal text message
           }
-        } catch {
-          // Normal text message
-        }
 
-        return {
-          id: message.id,
-          role: message.role,
-          content: message.content || "",
-          image: null,
+          return {
+            id: message.id,
+            role: message.role,
+            content,
+            image,
+          }
         }
-      })
+      )
 
       setMessages(formattedMessages)
       setActiveChat(chatId)
@@ -230,10 +187,7 @@ function App() {
         setSidebarOpen(false)
       }
     } catch (error) {
-      console.error(
-        "Load messages exception:",
-        error
-      )
+      console.error("Load messages:", error)
     }
   }
 
@@ -242,9 +196,10 @@ function App() {
   ========================================================= */
 
   const handleNewChat = () => {
+    if (loading) return
+
     setMessages([])
     setActiveChat(null)
-    setLoading(false)
 
     if (window.innerWidth < 900) {
       setSidebarOpen(false)
@@ -264,16 +219,10 @@ function App() {
         .delete()
         .eq("id", chatId)
 
-      if (error) {
-        console.error(
-          "Delete chat error:",
-          error
-        )
-        return
-      }
+      if (error) throw error
 
-      setChats((previous) =>
-        previous.filter(
+      setChats((prev) =>
+        prev.filter(
           (chat) => chat.id !== chatId
         )
       )
@@ -283,10 +232,7 @@ function App() {
         setActiveChat(null)
       }
     } catch (error) {
-      console.error(
-        "Delete chat exception:",
-        error
-      )
+      console.error("Delete chat:", error)
     }
   }
 
@@ -298,43 +244,28 @@ function App() {
     chatId,
     newTitle
   ) => {
-    const title = newTitle?.trim()
+    const title =
+      newTitle?.trim()?.slice(0, 60)
 
     if (!chatId || !title) return
-
-    const finalTitle = title.slice(0, 60)
 
     try {
       const { error } = await supabase
         .from("chat_sessions")
-        .update({
-          title: finalTitle,
-        })
+        .update({ title })
         .eq("id", chatId)
 
-      if (error) {
-        console.error(
-          "Rename chat error:",
-          error
-        )
-        return
-      }
+      if (error) throw error
 
-      setChats((previous) =>
-        previous.map((chat) =>
+      setChats((prev) =>
+        prev.map((chat) =>
           chat.id === chatId
-            ? {
-                ...chat,
-                title: finalTitle,
-              }
+            ? { ...chat, title }
             : chat
         )
       )
     } catch (error) {
-      console.error(
-        "Rename chat exception:",
-        error
-      )
+      console.error("Rename chat:", error)
     }
   }
 
@@ -370,10 +301,7 @@ function App() {
       })
 
     if (error) {
-      console.error(
-        "Save message error:",
-        error
-      )
+      console.error("Save message:", error)
 
       throw new Error(
         error.message ||
@@ -386,36 +314,58 @@ function App() {
      SEND MESSAGE
   ========================================================= */
 
-  const sendMessage = async (text, image = null) => {
-    const cleanText = text?.trim() || ""
+  const sendMessage = async (
+    text,
+    image = null
+  ) => {
+    const cleanText =
+      text?.trim() || ""
 
-    // A message must contain either text or an image.
-    if ((!cleanText && !image) || loading) return
+    if (
+      (!cleanText && !image) ||
+      loading
+    ) {
+      return
+    }
 
     setLoading(true)
 
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: cleanText,
-      image,
-    }
+    const temporaryUserId =
+      `user-${Date.now()}`
 
-    // Show the user's message immediately.
-    setMessages((previous) => [...previous, userMessage])
+    /* -----------------------------------------
+       SHOW USER MESSAGE
+    ----------------------------------------- */
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: temporaryUserId,
+        role: "user",
+        content: cleanText,
+        image,
+      },
+    ])
 
     try {
+      /* -----------------------------------------
+         CREATE OR USE CHAT
+      ----------------------------------------- */
+
       let chatId = activeChat
 
-      // Create a Supabase session automatically for the first message.
       if (!chatId) {
-        const chat = await createChat(
+        const newChat = await createChat(
           cleanText || "Image conversation"
         )
-        chatId = chat.id
+
+        chatId = newChat.id
       }
 
-      // Persist the user's message.
+      /* -----------------------------------------
+         SAVE USER MESSAGE
+      ----------------------------------------- */
+
       await saveMessage(
         chatId,
         "user",
@@ -423,19 +373,27 @@ function App() {
         image
       )
 
-      // Send text and image to the existing Vercel API.
-      const response = await fetch("/api/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          question: cleanText,
-          image,
-        }),
-      })
+      /* -----------------------------------------
+         CALL EXISTING BACKEND
+      ----------------------------------------- */
 
-      const responseText = await response.text()
+      const response = await fetch(
+        "/api/ask",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            question: cleanText,
+            image,
+          }),
+        }
+      )
+
+      const responseText =
+        await response.text()
 
       if (!response.ok) {
         throw new Error(
@@ -448,8 +406,14 @@ function App() {
       try {
         data = JSON.parse(responseText)
       } catch {
-        throw new Error("API returned invalid JSON.")
+        throw new Error(
+          "API returned invalid JSON."
+        )
       }
+
+      /* -----------------------------------------
+         EXTRACT AI ANSWER
+      ----------------------------------------- */
 
       const answer =
         data?.answer ||
@@ -457,71 +421,81 @@ function App() {
         data?.response ||
         data?.message
 
-      if (!answer) {
-        throw new Error("API returned no AI answer.")
+      if (
+        typeof answer !== "string" ||
+        !answer.trim()
+      ) {
+        throw new Error(
+          "API returned no AI answer."
+        )
       }
 
-      const assistantMessage = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: answer,
-        image: data?.image || null,
-      }
+      const assistantImage =
+        data?.image || null
 
-      setMessages((previous) => [
-        ...previous,
-        assistantMessage,
+      /* -----------------------------------------
+         SHOW AI MESSAGE
+      ----------------------------------------- */
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: answer,
+          image: assistantImage,
+        },
       ])
 
-      // Persist the AI response.
+      /* -----------------------------------------
+         SAVE AI MESSAGE
+      ----------------------------------------- */
+
       await saveMessage(
         chatId,
         "assistant",
         answer,
-        data?.image || null
+        assistantImage
       )
+
+      /* -----------------------------------------
+         REFRESH SIDEBAR
+      ----------------------------------------- */
 
       await loadChats()
     } catch (error) {
       console.error("Chat error:", error)
 
-      setMessages((previous) => [
-        ...previous,
+      /*
+       * Show the error in the UI,
+       * but do NOT save it as an AI response.
+       */
+
+      setMessages((prev) => [
+        ...prev,
         {
           id: `error-${Date.now()}`,
           role: "assistant",
           content:
             "Sorry, something went wrong.\n\n" +
-            (error?.message || "Please try again."),
+            (error?.message ||
+              "Please try again."),
+          isError: true,
         },
       ])
     } finally {
       setLoading(false)
     }
   }
-  /* =========================================================
-     QUICK PROMPT SELECT
-
-     Instead of sending immediately, stage the text so
-     ChatInput can visibly fill it into the textarea first,
-     then send it a moment later.
-  ========================================================= */
-
-  const handleQuickPrompt = (promptText) => {
-    setQuickPrompt({
-      text: promptText,
-      key: Date.now(),
-    })
-  }
 
   /* =========================================================
-     DARK MODE
+     QUICK PROMPTS
   ========================================================= */
 
-  const toggleDarkMode = () => {
-    setDarkMode(
-      (previous) => !previous
-    )
+  const handleQuickPrompt = (text) => {
+    if (!text || loading) return
+
+    sendMessage(text)
   }
 
   /* =========================================================
@@ -547,10 +521,7 @@ function App() {
       />
 
       <main className="main-content">
-
-        {/* ===================================================
-            HEADER
-        =================================================== */}
+        {/* HEADER */}
 
         <motion.header
           className="chat-header"
@@ -567,24 +538,14 @@ function App() {
           }}
         >
           <button
-            type="button"
             className="menu-button"
+            type="button"
             onClick={() =>
               setSidebarOpen(
-                (previous) =>
-                  !previous
+                (prev) => !prev
               )
             }
-            aria-label={
-              sidebarOpen
-                ? "Close sidebar"
-                : "Open sidebar"
-            }
-            title={
-              sidebarOpen
-                ? "Close sidebar"
-                : "Open sidebar"
-            }
+            aria-label="Toggle sidebar"
           >
             <Menu size={21} />
           </button>
@@ -611,9 +572,13 @@ function App() {
           </div>
 
           <button
-            type="button"
             className="theme-button"
-            onClick={toggleDarkMode}
+            type="button"
+            onClick={() =>
+              setDarkMode(
+                (prev) => !prev
+              )
+            }
             aria-label={
               darkMode
                 ? "Switch to light mode"
@@ -633,9 +598,7 @@ function App() {
           </button>
         </motion.header>
 
-        {/* ===================================================
-            CHAT AREA
-        =================================================== */}
+        {/* CHAT AREA */}
 
         <section className="messages-area">
           {messages.length === 0 ? (
@@ -662,9 +625,6 @@ function App() {
                 animate={{
                   scale: 1,
                   opacity: 1,
-                }}
-                transition={{
-                  duration: 0.35,
                 }}
               >
                 <Sparkles size={27} />
@@ -720,15 +680,11 @@ function App() {
           )}
         </section>
 
-        {/* ===================================================
-            INPUT
-        =================================================== */}
+        {/* INPUT */}
 
         <ChatInput
           onSend={sendMessage}
           loading={loading}
-          prefillText={quickPrompt.text}
-          prefillKey={quickPrompt.key}
         />
       </main>
     </div>

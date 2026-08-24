@@ -9,7 +9,12 @@ import {
   X,
 } from "lucide-react"
 
-function ChatInput({ onSend, loading }) {
+function ChatInput({
+  onSend,
+  loading,
+  prefillText = "",
+  prefillKey = 0,
+}) {
   const [input, setInput] = useState("")
   const [attachment, setAttachment] = useState(null)
   const [recording, setRecording] = useState(false)
@@ -26,8 +31,32 @@ function ChatInput({ onSend, loading }) {
     Boolean(input.trim()) || Boolean(attachment)
 
   /* =========================================================
+     QUICK PROMPT
+     ========================================================= */
+
+  useEffect(() => {
+    if (!prefillText) return
+
+    setInput(prefillText)
+
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+
+      if (!textarea) return
+
+      textarea.style.height = "auto"
+      textarea.style.height = `${Math.min(
+        textarea.scrollHeight,
+        160
+      )}px`
+
+      textarea.focus()
+    })
+  }, [prefillText, prefillKey])
+
+  /* =========================================================
      VOICE SUPPORT
-  ========================================================= */
+     ========================================================= */
 
   useEffect(() => {
     const SpeechRecognition =
@@ -39,9 +68,7 @@ function ChatInput({ onSend, loading }) {
     return () => {
       try {
         recognitionRef.current?.abort()
-      } catch {
-        // Ignore cleanup errors
-      }
+      } catch {}
 
       recognitionRef.current = null
     }
@@ -49,44 +76,27 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      AUTO RESIZE
-  ========================================================= */
+     ========================================================= */
 
   const resizeTextarea = () => {
     requestAnimationFrame(() => {
-      if (!textareaRef.current) return
+      const textarea = textareaRef.current
 
-      textareaRef.current.style.height = "auto"
+      if (!textarea) return
 
-      textareaRef.current.style.height = `${Math.min(
-        textareaRef.current.scrollHeight,
+      textarea.style.height = "auto"
+      textarea.style.height = `${Math.min(
+        textarea.scrollHeight,
         160
       )}px`
     })
   }
 
   /* =========================================================
-     SEND MESSAGE
-  ========================================================= */
+     CLEAR INPUT
+     ========================================================= */
 
-  const send = (event) => {
-    event?.preventDefault()
-
-    if (!hasContent || loading || recording) return
-
-    const text = input.trim()
-    const image = attachment?.data || null
-
-    /*
-      Sends both values to App.jsx:
-
-      onSend(text, image)
-
-      App.jsx then sends them to:
-      /api/ask
-    */
-
-    onSend(text, image)
-
+  const clearInput = () => {
     setInput("")
     setAttachment(null)
 
@@ -100,9 +110,27 @@ function ChatInput({ onSend, loading }) {
   }
 
   /* =========================================================
+     SEND
+     ========================================================= */
+
+  const send = (event) => {
+    event?.preventDefault()
+
+    if (!hasContent || loading || recording) return
+
+    const text = input.trim()
+    const image = attachment?.data || null
+
+    if (typeof onSend === "function") {
+      onSend(text, image)
+    }
+
+    clearInput()
+  }
+
+  /* =========================================================
      ENTER TO SEND
-     SHIFT + ENTER = NEW LINE
-  ========================================================= */
+     ========================================================= */
 
   const handleKeyDown = (event) => {
     if (
@@ -116,7 +144,7 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      TEXT CHANGE
-  ========================================================= */
+     ========================================================= */
 
   const handleChange = (event) => {
     setInput(event.target.value)
@@ -125,7 +153,7 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      IMAGE COMPRESSION
-  ========================================================= */
+     ========================================================= */
 
   const compressImage = (file) => {
     return new Promise((resolve, reject) => {
@@ -214,7 +242,7 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      IMAGE UPLOAD
-  ========================================================= */
+     ========================================================= */
 
   const handleFile = async (event) => {
     const file = event.target.files?.[0]
@@ -226,11 +254,6 @@ function ChatInput({ onSend, loading }) {
       event.target.value = ""
       return
     }
-
-    /*
-      Keep the request reasonably small.
-      The backend receives the image as a data URL.
-    */
 
     if (file.size > 8 * 1024 * 1024) {
       alert(
@@ -266,7 +289,7 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      REMOVE IMAGE
-  ========================================================= */
+     ========================================================= */
 
   const removeAttachment = () => {
     setAttachment(null)
@@ -278,29 +301,22 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      STOP VOICE
-  ========================================================= */
+     ========================================================= */
 
   const stopVoice = () => {
-    const recognition =
-      recognitionRef.current
-
-    if (!recognition) {
-      setRecording(false)
-      return
-    }
+    voiceSessionRef.current += 1
 
     try {
-      recognition.stop()
-    } catch {
-      // Already stopped
-    }
+      recognitionRef.current?.stop()
+    } catch {}
 
+    recognitionRef.current = null
     setRecording(false)
   }
 
   /* =========================================================
      START VOICE
-  ========================================================= */
+     ========================================================= */
 
   const startVoice = () => {
     const SpeechRecognition =
@@ -318,9 +334,7 @@ function ChatInput({ onSend, loading }) {
 
     try {
       recognitionRef.current?.abort()
-    } catch {
-      // Ignore
-    }
+    } catch {}
 
     const recognition =
       new SpeechRecognition()
@@ -342,13 +356,11 @@ function ChatInput({ onSend, loading }) {
 
     recognition.onstart = () => {
       if (
-        sessionId !==
+        sessionId ===
         voiceSessionRef.current
       ) {
-        return
+        setRecording(true)
       }
-
-      setRecording(true)
     }
 
     recognition.onresult = (event) => {
@@ -362,7 +374,7 @@ function ChatInput({ onSend, loading }) {
       let transcript = ""
 
       for (
-        let i = event.resultIndex;
+        let i = 0;
         i < event.results.length;
         i++
       ) {
@@ -370,19 +382,19 @@ function ChatInput({ onSend, loading }) {
           event.results[i][0].transcript
       }
 
-      const baseText =
-        voiceBaseTextRef.current
-
       const spokenText =
         transcript.trim()
 
-      if (!spokenText) return
+      const baseText =
+        voiceBaseTextRef.current
 
-      const newText = baseText
-        ? `${baseText} ${spokenText}`.trim()
-        : spokenText
+      const newText = spokenText
+        ? baseText
+          ? `${baseText} ${spokenText}`
+          : spokenText
+        : baseText
 
-      setInput(newText)
+      setInput(newText.trim())
 
       resizeTextarea()
     }
@@ -405,15 +417,13 @@ function ChatInput({ onSend, loading }) {
 
       if (
         event.error === "not-allowed" ||
-        event.error ===
-          "service-not-allowed"
+        event.error === "service-not-allowed"
       ) {
         alert(
           "Microphone permission was denied. Please allow microphone access in your browser."
         )
       } else if (
-        event.error ===
-        "audio-capture"
+        event.error === "audio-capture"
       ) {
         alert(
           "No microphone was detected. Please check your microphone."
@@ -454,7 +464,7 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      VOICE TOGGLE
-  ========================================================= */
+     ========================================================= */
 
   const toggleVoice = () => {
     if (loading) return
@@ -475,19 +485,15 @@ function ChatInput({ onSend, loading }) {
 
   /* =========================================================
      RENDER
-  ========================================================= */
+     ========================================================= */
 
   return (
     <div className="chat-input-container">
-
       <form
         className="chat-input-wrapper"
         onSubmit={send}
       >
-
-        {/* ===================================================
-            IMAGE PREVIEW
-        =================================================== */}
+        {/* IMAGE PREVIEW */}
 
         {attachment && (
           <motion.div
@@ -523,10 +529,7 @@ function ChatInput({ onSend, loading }) {
         )}
 
         <div className="chat-input-box">
-
-          {/* =================================================
-              FILE INPUT
-          ================================================= */}
+          {/* FILE INPUT */}
 
           <input
             ref={fileRef}
@@ -536,9 +539,7 @@ function ChatInput({ onSend, loading }) {
             onChange={handleFile}
           />
 
-          {/* =================================================
-              ATTACH IMAGE
-          ================================================= */}
+          {/* ATTACH */}
 
           <button
             type="button"
@@ -555,9 +556,7 @@ function ChatInput({ onSend, loading }) {
             <Plus size={20} />
           </button>
 
-          {/* =================================================
-              TEXT INPUT
-          ================================================= */}
+          {/* TEXTAREA */}
 
           <textarea
             ref={textareaRef}
@@ -578,17 +577,12 @@ function ChatInput({ onSend, loading }) {
           />
 
           <div className="input-actions">
-
-            {/* ===============================================
-                MICROPHONE
-            =============================================== */}
+            {/* VOICE */}
 
             <motion.button
               type="button"
               className={`input-action-button ${
-                recording
-                  ? "recording"
-                  : ""
+                recording ? "recording" : ""
               }`}
               onClick={toggleVoice}
               disabled={loading}
@@ -613,9 +607,7 @@ function ChatInput({ onSend, loading }) {
                         1,
                       ],
                     }
-                  : {
-                      scale: 1,
-                    }
+                  : { scale: 1 }
               }
               transition={
                 recording
@@ -639,9 +631,7 @@ function ChatInput({ onSend, loading }) {
               )}
             </motion.button>
 
-            {/* ===============================================
-                SEND
-            =============================================== */}
+            {/* SEND */}
 
             <motion.button
               type="submit"
@@ -655,18 +645,14 @@ function ChatInput({ onSend, loading }) {
                 hasContent &&
                 !loading &&
                 !recording
-                  ? {
-                      scale: 1.05,
-                    }
+                  ? { scale: 1.05 }
                   : undefined
               }
               whileTap={
                 hasContent &&
                 !loading &&
                 !recording
-                  ? {
-                      scale: 0.94,
-                    }
+                  ? { scale: 0.94 }
                   : undefined
               }
               aria-label="Send message"
@@ -681,14 +667,11 @@ function ChatInput({ onSend, loading }) {
                 <ArrowUp size={19} />
               )}
             </motion.button>
-
           </div>
         </div>
       </form>
 
-      {/* =====================================================
-          VOICE STATUS
-      ===================================================== */}
+      {/* VOICE STATUS */}
 
       {recording && (
         <motion.div
@@ -707,15 +690,10 @@ function ChatInput({ onSend, loading }) {
         </motion.div>
       )}
 
-      {/* =====================================================
-          DISCLAIMER
-      ===================================================== */}
-
       <p className="disclaimer">
         Lumora AI can make mistakes. Check
         important information.
       </p>
-
     </div>
   )
 }
