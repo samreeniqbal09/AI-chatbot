@@ -1,4 +1,9 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react"
 import supabase from "./supabase"
 
 const AuthContext = createContext(null)
@@ -9,6 +14,8 @@ const REDIRECT_URL =
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recoveryMode, setRecoveryMode] =
+    useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -18,10 +25,10 @@ export function AuthProvider({ children }) {
         data: { session },
       } = await supabase.auth.getSession()
 
-      if (mounted) {
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
+      if (!mounted) return
+
+      setUser(session?.user ?? null)
+      setLoading(false)
     }
 
     getSession()
@@ -29,7 +36,17 @@ export function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        if (!mounted) return
+
+        if (event === "PASSWORD_RECOVERY") {
+          setRecoveryMode(true)
+        }
+
+        if (event === "SIGNED_OUT") {
+          setRecoveryMode(false)
+        }
+
         setUser(session?.user ?? null)
         setLoading(false)
       }
@@ -87,6 +104,8 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
+        recoveryMode,
+        setRecoveryMode,
         signUp,
         signIn,
         resetPassword,

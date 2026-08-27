@@ -32,50 +32,44 @@ function App() {
     loading: authLoading,
   } = useAuth()
 
-  const [isRecovery, setIsRecovery] =
-    useState(false)
+  const [isRecovery, setIsRecovery] = useState(false)
 
   /*
-   * Detect Supabase password recovery.
+   * PASSWORD RECOVERY
    *
-   * When the user clicks the password reset
-   * email, Supabase redirects them back to:
+   * Supabase sends the user back to the Vercel URL
+   * after clicking the password reset email.
    *
-   * https://ai-chatbot-bay-chi.vercel.app/
+   * We detect both:
+   * - #type=recovery
+   * - ?type=recovery
    *
-   * with recovery information in the URL.
+   * We also listen for Supabase's PASSWORD_RECOVERY event.
    */
 
   useEffect(() => {
     const checkRecovery = () => {
-      const hash =
-        window.location.hash || ""
+      const hash = window.location.hash || ""
+      const search = window.location.search || ""
 
-      const search =
-        window.location.search || ""
-
-      const isRecoveryFlow =
+      const recovery =
         hash.includes("type=recovery") ||
         search.includes("type=recovery")
 
-      if (isRecoveryFlow) {
+      if (recovery) {
         setIsRecovery(true)
       }
     }
 
     checkRecovery()
 
-    const handleAuthState = (event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true)
       }
-    }
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      handleAuthState
-    )
+    })
 
     return () => {
       subscription.unsubscribe()
@@ -97,11 +91,9 @@ function App() {
   }
 
   /*
-   * PASSWORD RESET PAGE
+   * PASSWORD RESET
    *
-   * Show this before normal authentication
-   * whenever Supabase sends the user through
-   * the recovery flow.
+   * Must be checked before the normal user check.
    */
 
   if (isRecovery) {
@@ -123,41 +115,34 @@ function App() {
   return <ChatApp />
 }
 
+
+/* =========================================================
+   CHAT APP
+   ========================================================= */
+
 function ChatApp() {
-  const [messages, setMessages] =
-    useState([])
+  const [messages, setMessages] = useState([])
+  const [chats, setChats] = useState([])
+  const [activeChat, setActiveChat] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const [chats, setChats] =
-    useState([])
-
-  const [activeChat, setActiveChat] =
-    useState(null)
-
-  const [loading, setLoading] =
-    useState(false)
-
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false)
-
-  const messagesEndRef =
-    useRef(null)
+  const messagesEndRef = useRef(null)
 
   /*
    * DARK MODE
    */
 
-  const [darkMode, setDarkMode] =
-    useState(() => {
-      try {
-        return (
-          localStorage.getItem(
-            "lumora-dark-mode"
-          ) === "true"
-        )
-      } catch {
-        return false
-      }
-    })
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return (
+        localStorage.getItem("lumora-dark-mode") ===
+        "true"
+      )
+    } catch {
+      return false
+    }
+  })
 
   /*
    * THEME
@@ -178,12 +163,34 @@ function ChatApp() {
   }, [darkMode])
 
   /*
-   * INITIAL LOAD
+   * LOAD CHATS WHEN APP OPENS
    */
+
+  const loadChats = useCallback(async () => {
+    try {
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .order("created_at", {
+          ascending: false,
+        })
+
+      if (error) {
+        throw error
+      }
+
+      setChats(data || [])
+    } catch (error) {
+      console.error("Load chats:", error)
+    }
+  }, [])
 
   useEffect(() => {
     loadChats()
-  }, [])
+  }, [loadChats])
 
   /*
    * AUTO SCROLL
@@ -197,15 +204,12 @@ function ChatApp() {
   }, [messages, loading])
 
   /*
-   * RESPONSIVE
+   * RESPONSIVE SIDEBAR
    */
 
   useEffect(() => {
     const handleResize = () => {
-      if (
-        window.innerWidth >=
-        MOBILE_BREAKPOINT
-      ) {
+      if (window.innerWidth >= MOBILE_BREAKPOINT) {
         setSidebarOpen(false)
       }
     }
@@ -224,36 +228,6 @@ function ChatApp() {
   }, [])
 
   /*
-   * LOAD CHATS
-   */
-
-  const loadChats = useCallback(
-    async () => {
-      try {
-        const {
-          data,
-          error,
-        } = await supabase
-          .from("chat_sessions")
-          .select("*")
-          .order("created_at", {
-            ascending: false,
-          })
-
-        if (error) throw error
-
-        setChats(data || [])
-      } catch (error) {
-        console.error(
-          "Load chats:",
-          error
-        )
-      }
-    },
-    []
-  )
-
-  /*
    * CREATE CHAT
    */
 
@@ -261,15 +235,16 @@ function ChatApp() {
     text = "New Chat"
   ) => {
     const title =
-      text.trim().slice(0, 35) ||
-      "New Chat"
+      text.trim().slice(0, 35) || "New Chat"
 
     const {
       data,
       error,
     } = await supabase
       .from("chat_sessions")
-      .insert({ title })
+      .insert({
+        title,
+      })
       .select()
       .single()
 
@@ -288,8 +263,7 @@ function ChatApp() {
     setChats((prev) => [
       data,
       ...prev.filter(
-        (chat) =>
-          chat.id !== data.id
+        (chat) => chat.id !== data.id
       ),
     ])
 
@@ -302,9 +276,7 @@ function ChatApp() {
    * PARSE STORED MESSAGE
    */
 
-  const parseMessage = (
-    message
-  ) => {
+  const parseMessage = (message) => {
     let content =
       message.content || ""
 
@@ -317,8 +289,7 @@ function ChatApp() {
 
       if (
         parsed &&
-        typeof parsed ===
-          "object" &&
+        typeof parsed === "object" &&
         "text" in parsed
       ) {
         content =
@@ -327,7 +298,9 @@ function ChatApp() {
         image =
           parsed.image || null
       }
-    } catch {}
+    } catch {
+      // Normal text message
+    }
 
     return {
       id: message.id,
@@ -344,7 +317,9 @@ function ChatApp() {
   const loadMessages = async (
     chatId
   ) => {
-    if (!chatId) return
+    if (!chatId) {
+      return
+    }
 
     try {
       const {
@@ -364,7 +339,9 @@ function ChatApp() {
           }
         )
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       setMessages(
         (data || []).map(
@@ -393,7 +370,9 @@ function ChatApp() {
    */
 
   const handleNewChat = () => {
-    if (loading) return
+    if (loading) {
+      return
+    }
 
     setMessages([])
     setActiveChat(null)
@@ -413,7 +392,12 @@ function ChatApp() {
   const deleteChat = async (
     chatId
   ) => {
-    if (!chatId || loading) return
+    if (
+      !chatId ||
+      loading
+    ) {
+      return
+    }
 
     try {
       const {
@@ -421,9 +405,14 @@ function ChatApp() {
       } = await supabase
         .from("chat_sessions")
         .delete()
-        .eq("id", chatId)
+        .eq(
+          "id",
+          chatId
+        )
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       setChats((prev) =>
         prev.filter(
@@ -455,7 +444,9 @@ function ChatApp() {
     newTitle
   ) => {
     const title =
-      newTitle?.trim().slice(0, 60)
+      newTitle
+        ?.trim()
+        .slice(0, 60)
 
     if (
       !chatId ||
@@ -470,10 +461,17 @@ function ChatApp() {
         error,
       } = await supabase
         .from("chat_sessions")
-        .update({ title })
-        .eq("id", chatId)
+        .update({
+          title,
+        })
+        .eq(
+          "id",
+          chatId
+        )
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       setChats((prev) =>
         prev.map((chat) =>
@@ -512,7 +510,8 @@ function ChatApp() {
     const messageContent =
       image
         ? JSON.stringify({
-            text: content || "",
+            text:
+              content || "",
             image,
           })
         : content || ""
@@ -551,17 +550,20 @@ function ChatApp() {
     image
   ) => {
     const response =
-      await fetch("/api/ask", {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          question,
-          image,
-        }),
-      })
+      await fetch(
+        "/api/ask",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            question,
+            image,
+          }),
+        }
+      )
 
     const responseText =
       await response.text()
@@ -617,18 +619,30 @@ function ChatApp() {
 
     setLoading(true)
 
+    /*
+     * Show user's message immediately.
+     */
+
     setMessages((prev) => [
       ...prev,
       {
-        id: `user-${Date.now()}`,
+        id:
+          `user-${Date.now()}`,
         role: "user",
-        content: cleanText,
+        content:
+          cleanText,
         image,
       },
     ])
 
     try {
-      let chatId = activeChat
+      let chatId =
+        activeChat
+
+      /*
+       * Create a chat automatically
+       * when this is the first message.
+       */
 
       if (!chatId) {
         const chat =
@@ -640,12 +654,20 @@ function ChatApp() {
         chatId = chat.id
       }
 
+      /*
+       * Save user message.
+       */
+
       await saveMessage(
         chatId,
         "user",
         cleanText,
         image
       )
+
+      /*
+       * Ask AI backend.
+       */
 
       const data =
         await askBackend(
@@ -675,11 +697,17 @@ function ChatApp() {
       const assistantImage =
         data?.image || null
 
+      /*
+       * Show AI response.
+       */
+
       setMessages((prev) => [
         ...prev,
         {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
+          id:
+            `assistant-${Date.now()}`,
+          role:
+            "assistant",
           content:
             cleanAnswer,
           image:
@@ -687,12 +715,20 @@ function ChatApp() {
         },
       ])
 
+      /*
+       * Save AI response.
+       */
+
       await saveMessage(
         chatId,
         "assistant",
         cleanAnswer,
         assistantImage
       )
+
+      /*
+       * Refresh sidebar.
+       */
 
       await loadChats()
     } catch (error) {
@@ -704,12 +740,16 @@ function ChatApp() {
       setMessages((prev) => [
         ...prev,
         {
-          id: `error-${Date.now()}`,
-          role: "assistant",
+          id:
+            `error-${Date.now()}`,
+          role:
+            "assistant",
           content:
             "Sorry, something went wrong.\n\n" +
-            (error?.message ||
-              "Please try again."),
+            (
+              error?.message ||
+              "Please try again."
+            ),
           isError: true,
         },
       ])
@@ -718,27 +758,47 @@ function ChatApp() {
     }
   }
 
+  /*
+   * UI
+   */
+
   return (
     <div
       className={`app ${
-        darkMode ? "dark" : ""
+        darkMode
+          ? "dark"
+          : ""
       }`}
     >
       <Sidebar
         chats={chats}
         activeChat={activeChat}
-        onNewChat={handleNewChat}
-        onSelectChat={loadMessages}
-        onDeleteChat={deleteChat}
-        onRenameChat={renameChat}
-        sidebarOpen={sidebarOpen}
+        onNewChat={
+          handleNewChat
+        }
+        onSelectChat={
+          loadMessages
+        }
+        onDeleteChat={
+          deleteChat
+        }
+        onRenameChat={
+          renameChat
+        }
+        sidebarOpen={
+          sidebarOpen
+        }
         setSidebarOpen={
           setSidebarOpen
         }
-        darkMode={darkMode}
+        darkMode={
+          darkMode
+        }
       />
 
       <main className="main-content">
+        {/* HEADER */}
+
         <motion.header
           className="chat-header"
           initial={{
@@ -758,7 +818,8 @@ function ChatApp() {
             type="button"
             onClick={() =>
               setSidebarOpen(
-                (prev) => !prev
+                (prev) =>
+                  !prev
               )
             }
             aria-label="Toggle sidebar"
@@ -768,7 +829,9 @@ function ChatApp() {
 
           <div className="header-center">
             <div className="header-logo">
-              <Sparkles size={15} />
+              <Sparkles
+                size={15}
+              />
             </div>
 
             <div className="header-brand-text">
@@ -793,7 +856,8 @@ function ChatApp() {
             type="button"
             onClick={() =>
               setDarkMode(
-                (prev) => !prev
+                (prev) =>
+                  !prev
               )
             }
             aria-label={
@@ -814,6 +878,8 @@ function ChatApp() {
             )}
           </button>
         </motion.header>
+
+        {/* MESSAGES */}
 
         <section className="messages-area">
           {messages.length ===
@@ -918,9 +984,15 @@ function ChatApp() {
           )}
         </section>
 
+        {/* INPUT */}
+
         <ChatInput
-          onSend={sendMessage}
-          loading={loading}
+          onSend={
+            sendMessage
+          }
+          loading={
+            loading
+          }
         />
       </main>
     </div>
