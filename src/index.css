@@ -2386,3 +2386,65 @@ button:disabled {
     scroll-behavior: auto !important;
   }
 }
+/* =========================================================
+   AUTH PASSWORD RESET
+========================================================= */
+
+.lumora-auth-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lumora-auth-forgot {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lumora-auth-forgot:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+.lumora-auth-forgot-icon {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #eef2ff;
+  color: var(--primary);
+}
+
+.lumora-auth-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.lumora-auth-success svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.lumora-auth-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lumora-auth-back:hover {
+  color: var(--primary);
+}
