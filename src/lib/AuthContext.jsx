@@ -1,7 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import supabase from "./supabase"
 
-const AuthContext = createContext()
+const AuthContext = createContext(null)
+
+const REDIRECT_URL =
+  "https://ai-chatbot-bay-chi.vercel.app/"
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -43,6 +46,9 @@ export function AuthProvider({ children }) {
     return await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: REDIRECT_URL,
+      },
     })
   }
 
@@ -54,13 +60,12 @@ export function AuthProvider({ children }) {
     })
   }
 
-  // RESET PASSWORD EMAIL
+  // SEND PASSWORD RESET EMAIL
   const resetPassword = async (email) => {
     return await supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo:
-          "https://ai-chatbot-bay-chi.vercel.app/",
+        redirectTo: REDIRECT_URL,
       }
     )
   }
