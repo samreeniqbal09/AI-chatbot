@@ -1,17 +1,13 @@
-import os
 import json
+import os
 from http.server import BaseHTTPRequestHandler
+
 from openai import OpenAI
 
 
 class handler(BaseHTTPRequestHandler):
-
     def do_POST(self):
         try:
-            # =========================================================
-            # OPENROUTER API KEY
-            # =========================================================
-
             api_key = os.environ.get("OPENROUTER_API_KEY")
 
             if not api_key:
@@ -19,39 +15,17 @@ class handler(BaseHTTPRequestHandler):
                     "OPENROUTER_API_KEY is missing in Vercel."
                 )
 
-            client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=api_key,
-            )
-
-            # =========================================================
-            # READ REQUEST
-            # =========================================================
-
-            length = int(
-                self.headers.get("Content-Length", "0")
-            )
-
+            length = int(self.headers.get("Content-Length", "0"))
             body = self.rfile.read(length)
 
             if not body:
-                self.send_json(
-                    {"answer": "Empty request."},
-                    400,
-                )
+                self.send_json({"answer": "Empty request."}, 400)
                 return
 
             data = json.loads(body)
 
-            question = str(
-                data.get("question", "")
-            ).strip()
-
+            question = str(data.get("question", "")).strip()
             image = data.get("image")
-
-            # =========================================================
-            # VALIDATE REQUEST
-            # =========================================================
 
             if not question and not image:
                 self.send_json(
@@ -65,13 +39,8 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            # =========================================================
-            # BUILD MULTIMODAL MESSAGE
-            # =========================================================
-
             content = []
 
-            # TEXT
             if question:
                 content.append(
                     {
@@ -80,23 +49,17 @@ class handler(BaseHTTPRequestHandler):
                     }
                 )
 
-            # IMAGE
             if image:
-
                 if not isinstance(image, str):
                     self.send_json(
-                        {
-                            "answer": "Invalid image data."
-                        },
+                        {"answer": "Invalid image data."},
                         400,
                     )
                     return
 
                 if not image.startswith("data:image/"):
                     self.send_json(
-                        {
-                            "answer": "Invalid image format."
-                        },
+                        {"answer": "Invalid image format."},
                         400,
                     )
                     return
@@ -104,15 +67,14 @@ class handler(BaseHTTPRequestHandler):
                 content.append(
                     {
                         "type": "image_url",
-                        "image_url": {
-                            "url": image
-                        },
+                        "image_url": {"url": image},
                     }
                 )
 
-            # =========================================================
-            # SEND TO AI
-            # =========================================================
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key,
+            )
 
             response = client.chat.completions.create(
                 model="qwen/qwen3.7-flash",
@@ -124,126 +86,64 @@ class handler(BaseHTTPRequestHandler):
                 ],
             )
 
-            # =========================================================
-            # GET AI RESPONSE
-            # =========================================================
-
             answer = (
-                response.choices[0]
-                .message
-                .content
+                response.choices[0].message.content
                 or "I couldn't generate a response."
             )
-
-            # =========================================================
-            # RETURN RESPONSE
-            # =========================================================
 
             self.send_json(
                 {
                     "answer": answer,
-                    "image": image if image else None,
-                },
-                200,
+                    "image": image or None,
+                }
             )
 
-        # =============================================================
-        # INVALID JSON
-        # =============================================================
-
         except json.JSONDecodeError:
-
             self.send_json(
-                {
-                    "answer": "Invalid request data."
-                },
+                {"answer": "Invalid request data."},
                 400,
             )
 
-        # =============================================================
-        # GENERAL ERROR
-        # =============================================================
-
-        except Exception as e:
-
-            print(
-                "API ERROR:",
-                repr(e)
-            )
+        except Exception as error:
+            print("API ERROR:", repr(error))
 
             self.send_json(
                 {
                     "answer": "Backend error.",
-                    "error": str(e),
+                    "error": str(error),
                 },
                 500,
             )
 
-    # ===============================================================
-    # OPTIONS / PREFLIGHT
-    # ===============================================================
-
     def do_OPTIONS(self):
-
         self.send_response(204)
-
         self.send_cors_headers()
-
         self.end_headers()
 
-    # ===============================================================
-    # CORS
-    # ===============================================================
-
     def send_cors_headers(self):
-
-        self.send_header(
-            "Access-Control-Allow-Origin",
-            "*",
-        )
-
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header(
             "Access-Control-Allow-Methods",
             "POST, OPTIONS",
         )
-
         self.send_header(
             "Access-Control-Allow-Headers",
             "Content-Type",
         )
 
-    # ===============================================================
-    # JSON RESPONSE
-    # ===============================================================
+    def send_json(self, data, status_code=200):
+        response = json.dumps(data).encode("utf-8")
 
-    def send_json(
-        self,
-        data,
-        status_code=200,
-    ):
-
-        response = json.dumps(
-            data
-        ).encode("utf-8")
-
-        self.send_response(
-            status_code
-        )
-
+        self.send_response(status_code)
         self.send_header(
             "Content-Type",
             "application/json",
         )
-
         self.send_header(
             "Content-Length",
             str(len(response)),
         )
 
         self.send_cors_headers()
-
         self.end_headers()
-
-        self.wfile.write(
-            response
-        )
+        self.wfile.write(response)

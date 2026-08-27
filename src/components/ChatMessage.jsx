@@ -10,10 +10,6 @@ import {
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
-/* =========================================================
-   CODE BLOCK
-========================================================= */
-
 function CodeBlock({ children, className }) {
   const [copied, setCopied] = useState(false)
 
@@ -25,12 +21,8 @@ function CodeBlock({ children, className }) {
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(code)
-
       setCopied(true)
-
-      setTimeout(() => {
-        setCopied(false)
-      }, 1500)
+      setTimeout(() => setCopied(false), 1500)
     } catch (error) {
       console.error("Copy code failed:", error)
     }
@@ -50,15 +42,8 @@ function CodeBlock({ children, className }) {
           aria-label="Copy code"
           title="Copy code"
         >
-          {copied ? (
-            <Check size={13} />
-          ) : (
-            <Copy size={13} />
-          )}
-
-          <span>
-            {copied ? "Copied" : "Copy"}
-          </span>
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+          <span>{copied ? "Copied" : "Copy"}</span>
         </button>
       </div>
 
@@ -69,93 +54,47 @@ function CodeBlock({ children, className }) {
   )
 }
 
-/* =========================================================
-   CHAT MESSAGE
-========================================================= */
-
 function ChatMessage({ message }) {
   const isUser = message?.role === "user"
-
-  const [copied, setCopied] = useState(false)
-
   const content = message?.content || ""
   const image = message?.image || null
 
-  /* =======================================================
-     COPY RESPONSE
-  ======================================================= */
+  const [copied, setCopied] = useState(false)
 
   const copyResponse = async () => {
     if (!content) return
 
     try {
       await navigator.clipboard.writeText(content)
-
       setCopied(true)
-
-      setTimeout(() => {
-        setCopied(false)
-      }, 1500)
+      setTimeout(() => setCopied(false), 1500)
     } catch (error) {
       console.error("Copy response failed:", error)
     }
   }
 
-  /* =======================================================
-     RENDER
-  ======================================================= */
-
   return (
     <motion.div
       className={`message-row ${
-        isUser
-          ? "user-message"
-          : "ai-message"
+        isUser ? "user-message" : "ai-message"
       }`}
-      initial={{
-        opacity: 0,
-        y: 8,
-      }}
-      animate={{
-        opacity: 1,
-        y: 0,
-      }}
-      transition={{
-        duration: 0.22,
-        ease: "easeOut",
-      }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
     >
-      {/* AI AVATAR */}
-
       {!isUser && (
         <motion.div
           className="message-avatar ai-avatar"
-          initial={{
-            scale: 0.85,
-          }}
-          animate={{
-            scale: 1,
-          }}
-          transition={{
-            duration: 0.2,
-          }}
+          initial={{ scale: 0.85 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.2 }}
         >
           <Bot size={16} />
         </motion.div>
       )}
 
       <div className="message-content">
-        {/* MESSAGE BUBBLE */}
-
-        <div
-          className={
-            isUser
-              ? "user-bubble"
-              : "ai-bubble"
-          }
-        >
-          {/* IMAGE */}
-
+        <div className={isUser ? "user-bubble" : "ai-bubble"}>
           {image && (
             <div className="message-image-wrapper">
               <img
@@ -164,60 +103,36 @@ function ChatMessage({ message }) {
                 className="message-image"
                 loading="lazy"
                 onError={(event) => {
-                  event.currentTarget.style.display =
-                    "none"
+                  event.currentTarget.style.display = "none"
                 }}
               />
             </div>
           )}
 
-          {/* USER MESSAGE */}
-
           {isUser ? (
-            content && (
-              <div className="user-text">
-                {content}
-              </div>
-            )
+            content && <div className="user-text">{content}</div>
           ) : (
-            /* AI MESSAGE */
-
             content && (
               <div className="chat-markdown">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
-                    /* ---------------------------------------
-                       CODE
-                    --------------------------------------- */
-
-                    pre: ({ children }) => (
-                      <>{children}</>
-                    ),
+                    pre: ({ children }) => <>{children}</>,
 
                     code: ({
                       className,
                       children,
                       ...props
                     }) => {
-                      const isCodeBlock =
-                        typeof className ===
-                          "string" &&
-                        className.startsWith(
-                          "language-"
-                        )
+                      const isBlock =
+                        typeof className === "string" &&
+                        className.startsWith("language-")
 
-                      if (isCodeBlock) {
-                        return (
-                          <CodeBlock
-                            className={className}
-                          >
-                            {children}
-                          </CodeBlock>
-                        )
-                      }
-
-                      return (
+                      return isBlock ? (
+                        <CodeBlock className={className}>
+                          {children}
+                        </CodeBlock>
+                      ) : (
                         <code
                           {...props}
                           className="inline-code"
@@ -227,26 +142,11 @@ function ChatMessage({ message }) {
                       )
                     },
 
-                    /* ---------------------------------------
-                       BLOCKQUOTE
-                    --------------------------------------- */
-
-                    blockquote: ({
-                      children,
-                    }) => (
-                      <blockquote>
-                        {children}
-                      </blockquote>
+                    blockquote: ({ children }) => (
+                      <blockquote>{children}</blockquote>
                     ),
 
-                    /* ---------------------------------------
-                       LINKS
-                    --------------------------------------- */
-
-                    a: ({
-                      href,
-                      children,
-                    }) => (
+                    a: ({ href, children }) => (
                       <a
                         href={href}
                         target="_blank"
@@ -256,73 +156,22 @@ function ChatMessage({ message }) {
                       </a>
                     ),
 
-                    /* ---------------------------------------
-                       TABLE
-                    --------------------------------------- */
-
-                    table: ({
-                      children,
-                    }) => (
+                    table: ({ children }) => (
                       <div className="markdown-table">
-                        <table>
-                          {children}
-                        </table>
+                        <table>{children}</table>
                       </div>
                     ),
 
-                    /* ---------------------------------------
-                       HORIZONTAL RULE
-                    --------------------------------------- */
-
                     hr: () => <hr />,
 
-                    /* ---------------------------------------
-                       HEADINGS
-                    --------------------------------------- */
+                    h1: ({ children }) => <h1>{children}</h1>,
+                    h2: ({ children }) => <h2>{children}</h2>,
+                    h3: ({ children }) => <h3>{children}</h3>,
 
-                    h1: ({
-                      children,
-                    }) => (
-                      <h1>{children}</h1>
-                    ),
+                    ul: ({ children }) => <ul>{children}</ul>,
+                    ol: ({ children }) => <ol>{children}</ol>,
 
-                    h2: ({
-                      children,
-                    }) => (
-                      <h2>{children}</h2>
-                    ),
-
-                    h3: ({
-                      children,
-                    }) => (
-                      <h3>{children}</h3>
-                    ),
-
-                    /* ---------------------------------------
-                       LISTS
-                    --------------------------------------- */
-
-                    ul: ({
-                      children,
-                    }) => (
-                      <ul>{children}</ul>
-                    ),
-
-                    ol: ({
-                      children,
-                    }) => (
-                      <ol>{children}</ol>
-                    ),
-
-                    /* ---------------------------------------
-                       PARAGRAPH
-                    --------------------------------------- */
-
-                    p: ({
-                      children,
-                    }) => (
-                      <p>{children}</p>
-                    ),
+                    p: ({ children }) => <p>{children}</p>,
                   }}
                 >
                   {content}
@@ -332,8 +181,6 @@ function ChatMessage({ message }) {
           )}
         </div>
 
-        {/* COPY AI RESPONSE */}
-
         {!isUser && content && (
           <motion.button
             type="button"
@@ -341,42 +188,21 @@ function ChatMessage({ message }) {
             onClick={copyResponse}
             aria-label="Copy response"
             title="Copy response"
-            whileHover={{
-              y: -1,
-            }}
-            whileTap={{
-              scale: 0.96,
-            }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.96 }}
           >
-            {copied ? (
-              <Check size={13} />
-            ) : (
-              <Copy size={13} />
-            )}
-
-            <span>
-              {copied
-                ? "Copied"
-                : "Copy"}
-            </span>
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            <span>{copied ? "Copied" : "Copy"}</span>
           </motion.button>
         )}
       </div>
 
-      {/* USER AVATAR */}
-
       {isUser && (
         <motion.div
           className="message-avatar user-avatar"
-          initial={{
-            scale: 0.85,
-          }}
-          animate={{
-            scale: 1,
-          }}
-          transition={{
-            duration: 0.2,
-          }}
+          initial={{ scale: 0.85 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.2 }}
         >
           <User size={16} />
         </motion.div>

@@ -8,7 +8,7 @@ import {
   PenLine,
 } from "lucide-react"
 
-const prompts = [
+const PROMPTS = [
   {
     icon: Lightbulb,
     title: "Explain a concept",
@@ -54,61 +54,32 @@ const prompts = [
 ]
 
 function QuickPrompts({ onSelect }) {
-  const handleSelect = (prompt) => {
-    if (!prompt || typeof onSelect !== "function") {
-      return
-    }
-
-    onSelect(prompt)
-  }
+  if (typeof onSelect !== "function") return null
 
   return (
     <div className="quick-prompts">
-      {prompts.map(
-        (
-          {
-            icon: Icon,
-            title,
-            description,
-            prompt,
-          },
-          index
-        ) => (
+      {PROMPTS.map(
+        ({ icon: Icon, title, description, prompt }, index) => (
           <motion.button
             key={title}
             type="button"
             className="quick-prompt-card"
-            onClick={() => handleSelect(prompt)}
-            initial={{
-              opacity: 0,
-              y: 18,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
+            onClick={() => onSelect(prompt)}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{
               delay: 0.12 + index * 0.06,
               duration: 0.35,
               ease: "easeOut",
             }}
-            whileHover={{
-              y: -5,
-            }}
-            whileTap={{
-              scale: 0.97,
-            }}
+            whileHover={{ y: -5 }}
+            whileTap={{ scale: 0.97 }}
             aria-label={title}
           >
             <motion.div
               className="quick-prompt-icon"
-              whileHover={{
-                scale: 1.08,
-                rotate: 2,
-              }}
-              transition={{
-                duration: 0.2,
-              }}
+              whileHover={{ scale: 1.08, rotate: 2 }}
+              transition={{ duration: 0.2 }}
             >
               <Icon size={18} />
             </motion.div>

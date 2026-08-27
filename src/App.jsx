@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Menu, Moon, Sun, Sparkles } from "lucide-react"
 import { motion } from "motion/react"
 
@@ -8,13 +8,16 @@ import ChatInput from "./components/ChatInput"
 import QuickPrompts from "./components/QuickPrompts"
 import supabase from "./lib/supabase"
 
+const MOBILE_BREAKPOINT = 900
+
 function App() {
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
   const [activeChat, setActiveChat] = useState(null)
-
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const messagesEndRef = useRef(null)
 
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -24,41 +27,39 @@ function App() {
     }
   })
 
-  /* =========================================================
-     THEME
-  ========================================================= */
+  /* THEME */
 
   useEffect(() => {
-    document.documentElement.classList.toggle(
-      "dark",
-      darkMode
-    )
+    document.documentElement.classList.toggle("dark", darkMode)
 
     try {
       localStorage.setItem(
         "lumora-dark-mode",
         String(darkMode)
       )
-    } catch {
-      // Ignore storage errors
-    }
+    } catch {}
   }, [darkMode])
 
-  /* =========================================================
-     INITIAL LOAD
-  ========================================================= */
+  /* INITIAL LOAD */
 
   useEffect(() => {
     loadChats()
   }, [])
 
-  /* =========================================================
-     MOBILE SIDEBAR
-  ========================================================= */
+  /* AUTO SCROLL */
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    })
+  }, [messages, loading])
+
+  /* RESPONSIVE */
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 900) {
+      if (window.innerWidth >= MOBILE_BREAKPOINT) {
         setSidebarOpen(false)
       }
     }
@@ -66,25 +67,18 @@ function App() {
     window.addEventListener("resize", handleResize)
 
     return () => {
-      window.removeEventListener(
-        "resize",
-        handleResize
-      )
+      window.removeEventListener("resize", handleResize)
     }
   }, [])
 
-  /* =========================================================
-     LOAD CHATS
-  ========================================================= */
+  /* LOAD CHATS */
 
-  const loadChats = async () => {
+  const loadChats = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("chat_sessions")
         .select("*")
-        .order("created_at", {
-          ascending: false,
-        })
+        .order("created_at", { ascending: false })
 
       if (error) throw error
 
@@ -92,15 +86,12 @@ function App() {
     } catch (error) {
       console.error("Load chats:", error)
     }
-  }
+  }, [])
 
-  /* =========================================================
-     CREATE CHAT
-  ========================================================= */
+  /* CREATE CHAT */
 
   const createChat = async (text = "New Chat") => {
-    const title =
-      text.trim().slice(0, 35) || "New Chat"
+    const title = text.trim().slice(0, 35) || "New Chat"
 
     const { data, error } = await supabase
       .from("chat_sessions")
@@ -110,18 +101,14 @@ function App() {
 
     if (error) {
       console.error("Create chat:", error)
-
       throw new Error(
-        error.message ||
-          "Unable to create chat session."
+        error.message || "Unable to create chat."
       )
     }
 
     setChats((prev) => [
       data,
-      ...prev.filter(
-        (chat) => chat.id !== data.id
-      ),
+      ...prev.filter((chat) => chat.id !== data.id),
     ])
 
     setActiveChat(data.id)
@@ -129,61 +116,51 @@ function App() {
     return data
   }
 
-  /* =========================================================
-     LOAD CHAT MESSAGES
-  ========================================================= */
+  /* PARSE STORED MESSAGE */
+
+  const parseMessage = (message) => {
+    let content = message.content || ""
+    let image = null
+
+    try {
+      const parsed = JSON.parse(message.content)
+
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "text" in parsed
+      ) {
+        content = parsed.text || ""
+        image = parsed.image || null
+      }
+    } catch {}
+
+    return {
+      id: message.id,
+      role: message.role,
+      content,
+      image,
+    }
+  }
+
+  /* LOAD MESSAGES */
 
   const loadMessages = async (chatId) => {
     if (!chatId) return
 
     try {
-      setLoading(false)
-
       const { data, error } = await supabase
         .from("chat_messages")
         .select("*")
         .eq("session_id", chatId)
-        .order("created_at", {
-          ascending: true,
-        })
+        .order("created_at", { ascending: true })
 
       if (error) throw error
 
-      const formattedMessages = (data || []).map(
-        (message) => {
-          let content = message.content || ""
-          let image = null
-
-          try {
-            const parsed = JSON.parse(
-              message.content
-            )
-
-            if (
-              parsed &&
-              typeof parsed === "object" &&
-              "text" in parsed
-            ) {
-              content = parsed.text || ""
-              image = parsed.image || null
-            }
-          } catch {
-            // Normal text message
-          }
-
-          return {
-            id: message.id,
-            role: message.role,
-            content,
-            image,
-          }
-        }
-      )
-
-      setMessages(formattedMessages)
+      setMessages((data || []).map(parseMessage))
       setActiveChat(chatId)
 
-      if (window.innerWidth < 900) {
+      if (window.innerWidth < MOBILE_BREAKPOINT) {
         setSidebarOpen(false)
       }
     } catch (error) {
@@ -191,9 +168,7 @@ function App() {
     }
   }
 
-  /* =========================================================
-     NEW CHAT
-  ========================================================= */
+  /* NEW CHAT */
 
   const handleNewChat = () => {
     if (loading) return
@@ -201,17 +176,15 @@ function App() {
     setMessages([])
     setActiveChat(null)
 
-    if (window.innerWidth < 900) {
+    if (window.innerWidth < MOBILE_BREAKPOINT) {
       setSidebarOpen(false)
     }
   }
 
-  /* =========================================================
-     DELETE CHAT
-  ========================================================= */
+  /* DELETE CHAT */
 
   const deleteChat = async (chatId) => {
-    if (!chatId) return
+    if (!chatId || loading) return
 
     try {
       const { error } = await supabase
@@ -222,9 +195,7 @@ function App() {
       if (error) throw error
 
       setChats((prev) =>
-        prev.filter(
-          (chat) => chat.id !== chatId
-        )
+        prev.filter((chat) => chat.id !== chatId)
       )
 
       if (activeChat === chatId) {
@@ -236,18 +207,12 @@ function App() {
     }
   }
 
-  /* =========================================================
-     RENAME CHAT
-  ========================================================= */
+  /* RENAME CHAT */
 
-  const renameChat = async (
-    chatId,
-    newTitle
-  ) => {
-    const title =
-      newTitle?.trim()?.slice(0, 60)
+  const renameChat = async (chatId, newTitle) => {
+    const title = newTitle?.trim().slice(0, 60)
 
-    if (!chatId || !title) return
+    if (!chatId || !title || loading) return
 
     try {
       const { error } = await supabase
@@ -269,9 +234,7 @@ function App() {
     }
   }
 
-  /* =========================================================
-     SAVE MESSAGE
-  ========================================================= */
+  /* SAVE MESSAGE */
 
   const saveMessage = async (
     sessionId,
@@ -280,9 +243,7 @@ function App() {
     image = null
   ) => {
     if (!sessionId) {
-      throw new Error(
-        "Chat session was not created."
-      )
+      throw new Error("Chat session was not created.")
     }
 
     const messageContent = image
@@ -302,45 +263,67 @@ function App() {
 
     if (error) {
       console.error("Save message:", error)
-
       throw new Error(
-        error.message ||
-          "Unable to save message."
+        error.message || "Unable to save message."
       )
     }
   }
 
-  /* =========================================================
-     SEND MESSAGE
-  ========================================================= */
+  /* BACKEND */
 
-  const sendMessage = async (
-    text,
-    image = null
-  ) => {
-    const cleanText =
-      text?.trim() || ""
+  const askBackend = async (question, image) => {
+    const response = await fetch("/api/ask", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question,
+        image,
+      }),
+    })
 
-    if (
-      (!cleanText && !image) ||
-      loading
-    ) {
-      return
+    const responseText = await response.text()
+
+    let data = null
+
+    try {
+      data = JSON.parse(responseText)
+    } catch {
+      if (!response.ok) {
+        throw new Error(
+          `API error ${response.status}: ${responseText}`
+        )
+      }
+
+      throw new Error("API returned invalid JSON.")
     }
 
+    if (!response.ok) {
+      throw new Error(
+        data?.error ||
+          data?.message ||
+          data?.answer ||
+          `API error ${response.status}`
+      )
+    }
+
+    return data
+  }
+
+  /* SEND MESSAGE */
+
+  const sendMessage = async (text, image = null) => {
+    const cleanText = text?.trim() || ""
+
+    if ((!cleanText && !image) || loading) return
+
     setLoading(true)
-
-    const temporaryUserId =
-      `user-${Date.now()}`
-
-    /* -----------------------------------------
-       SHOW USER MESSAGE
-    ----------------------------------------- */
 
     setMessages((prev) => [
       ...prev,
       {
-        id: temporaryUserId,
+        id: `user-${Date.now()}`,
         role: "user",
         content: cleanText,
         image,
@@ -348,23 +331,15 @@ function App() {
     ])
 
     try {
-      /* -----------------------------------------
-         CREATE OR USE CHAT
-      ----------------------------------------- */
-
       let chatId = activeChat
 
       if (!chatId) {
-        const newChat = await createChat(
+        const chat = await createChat(
           cleanText || "Image conversation"
         )
 
-        chatId = newChat.id
+        chatId = chat.id
       }
-
-      /* -----------------------------------------
-         SAVE USER MESSAGE
-      ----------------------------------------- */
 
       await saveMessage(
         chatId,
@@ -373,47 +348,10 @@ function App() {
         image
       )
 
-      /* -----------------------------------------
-         CALL EXISTING BACKEND
-      ----------------------------------------- */
-
-      const response = await fetch(
-        "/api/ask",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            question: cleanText,
-            image,
-          }),
-        }
+      const data = await askBackend(
+        cleanText,
+        image
       )
-
-      const responseText =
-        await response.text()
-
-      if (!response.ok) {
-        throw new Error(
-          `API error ${response.status}: ${responseText}`
-        )
-      }
-
-      let data
-
-      try {
-        data = JSON.parse(responseText)
-      } catch {
-        throw new Error(
-          "API returned invalid JSON."
-        )
-      }
-
-      /* -----------------------------------------
-         EXTRACT AI ANSWER
-      ----------------------------------------- */
 
       const answer =
         data?.answer ||
@@ -430,46 +368,29 @@ function App() {
         )
       }
 
-      const assistantImage =
-        data?.image || null
-
-      /* -----------------------------------------
-         SHOW AI MESSAGE
-      ----------------------------------------- */
+      const cleanAnswer = answer.trim()
+      const assistantImage = data?.image || null
 
       setMessages((prev) => [
         ...prev,
         {
           id: `assistant-${Date.now()}`,
           role: "assistant",
-          content: answer,
+          content: cleanAnswer,
           image: assistantImage,
         },
       ])
 
-      /* -----------------------------------------
-         SAVE AI MESSAGE
-      ----------------------------------------- */
-
       await saveMessage(
         chatId,
         "assistant",
-        answer,
+        cleanAnswer,
         assistantImage
       )
-
-      /* -----------------------------------------
-         REFRESH SIDEBAR
-      ----------------------------------------- */
 
       await loadChats()
     } catch (error) {
       console.error("Chat error:", error)
-
-      /*
-       * Show the error in the UI,
-       * but do NOT save it as an AI response.
-       */
 
       setMessages((prev) => [
         ...prev,
@@ -478,8 +399,7 @@ function App() {
           role: "assistant",
           content:
             "Sorry, something went wrong.\n\n" +
-            (error?.message ||
-              "Please try again."),
+            (error?.message || "Please try again."),
           isError: true,
         },
       ])
@@ -488,26 +408,8 @@ function App() {
     }
   }
 
-  /* =========================================================
-     QUICK PROMPTS
-  ========================================================= */
-
-  const handleQuickPrompt = (text) => {
-    if (!text || loading) return
-
-    sendMessage(text)
-  }
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
-
   return (
-    <div
-      className={`app ${
-        darkMode ? "dark" : ""
-      }`}
-    >
+    <div className={`app ${darkMode ? "dark" : ""}`}>
       <Sidebar
         chats={chats}
         activeChat={activeChat}
@@ -521,29 +423,17 @@ function App() {
       />
 
       <main className="main-content">
-        {/* HEADER */}
-
         <motion.header
           className="chat-header"
-          initial={{
-            opacity: 0,
-            y: -10,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.3,
-          }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
         >
           <button
             className="menu-button"
             type="button"
             onClick={() =>
-              setSidebarOpen(
-                (prev) => !prev
-              )
+              setSidebarOpen((prev) => !prev)
             }
             aria-label="Toggle sidebar"
           >
@@ -575,9 +465,7 @@ function App() {
             className="theme-button"
             type="button"
             onClick={() =>
-              setDarkMode(
-                (prev) => !prev
-              )
+              setDarkMode((prev) => !prev)
             }
             aria-label={
               darkMode
@@ -597,8 +485,6 @@ function App() {
             )}
           </button>
         </motion.header>
-
-        {/* CHAT AREA */}
 
         <section className="messages-area">
           {messages.length === 0 ? (
@@ -641,7 +527,7 @@ function App() {
               </p>
 
               <QuickPrompts
-                onSelect={handleQuickPrompt}
+                onSelect={sendMessage}
               />
             </motion.div>
           ) : (
@@ -676,11 +562,11 @@ function App() {
                   </div>
                 </motion.div>
               )}
+
+              <div ref={messagesEndRef} />
             </div>
           )}
         </section>
-
-        {/* INPUT */}
 
         <ChatInput
           onSend={sendMessage}
