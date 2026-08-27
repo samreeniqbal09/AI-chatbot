@@ -1,3 +1,5 @@
+import { useAuth } from "./lib/AuthContext"
+import AuthPage from "./components/AuthPage"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Menu, Moon, Sun, Sparkles } from "lucide-react"
 import { motion } from "motion/react"
@@ -11,6 +13,26 @@ import supabase from "./lib/supabase"
 const MOBILE_BREAKPOINT = 900
 
 function App() {
+  const { user, loading: authLoading } = useAuth()
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm opacity-70">
+          Loading Lumora AI...
+        </p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <AuthPage />
+  }
+
+  return <ChatApp />
+}
+
+function ChatApp() {
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
   const [activeChat, setActiveChat] = useState(null)
