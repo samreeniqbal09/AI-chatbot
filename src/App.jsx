@@ -14,7 +14,6 @@ import {
   Moon,
   Sun,
   Sparkles,
-  LogOut,
 } from "lucide-react"
 
 import { motion } from "motion/react"
@@ -94,7 +93,6 @@ function ChatApp() {
 
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [loggingOut, setLoggingOut] = useState(false)
 
   const [limitReached, setLimitReached] = useState(false)
   const [retryMinutes, setRetryMinutes] = useState(0)
@@ -218,42 +216,6 @@ function ChatApp() {
 
     return () => clearInterval(timer)
   }, [limitReached])
-
-  /*
-   * LOGOUT
-   */
-  const handleLogout = async () => {
-    if (loggingOut) return
-
-    try {
-      setLoggingOut(true)
-
-      const {
-        error,
-      } = await supabase.auth.signOut()
-
-      if (error) throw error
-
-      setMessages([])
-      setChats([])
-      setActiveChat(null)
-      setSidebarOpen(false)
-      setLimitReached(false)
-      setRetryMinutes(0)
-    } catch (error) {
-      console.error(
-        "Logout error:",
-        error
-      )
-
-      alert(
-        error?.message ||
-          "Unable to log out. Please try again."
-      )
-    } finally {
-      setLoggingOut(false)
-    }
-  }
 
   /*
    * CREATE CHAT
@@ -747,8 +709,7 @@ function ChatApp() {
     setLoading(true)
 
     /*
-     * Show the user message
-     * immediately in the UI.
+     * Show user message immediately.
      */
     const temporaryUserMessage = {
       id:
@@ -767,9 +728,6 @@ function ChatApp() {
     try {
       /*
        * Ask backend FIRST.
-       *
-       * Backend verifies authentication
-       * and checks the PostgreSQL rate limit.
        */
       const data =
         await askBackend(
@@ -800,9 +758,8 @@ function ChatApp() {
         data?.image || null
 
       /*
-       * Only create/save the chat
-       * after the backend accepts
-       * the request.
+       * Create chat only after
+       * backend accepts request.
        */
       let chatId =
         activeChat
@@ -819,7 +776,7 @@ function ChatApp() {
       }
 
       /*
-       * Save USER message
+       * Save USER message.
        */
       await saveMessage(
         chatId,
@@ -829,7 +786,7 @@ function ChatApp() {
       )
 
       /*
-       * Show AI response
+       * Show AI response.
        */
       setMessages((prev) => [
         ...prev,
@@ -846,7 +803,7 @@ function ChatApp() {
       ])
 
       /*
-       * Save AI response
+       * Save AI response.
        */
       await saveMessage(
         chatId,
@@ -867,9 +824,11 @@ function ChatApp() {
        */
       if (
         error?.isRateLimit ||
-        error?.message?.toLowerCase().includes(
-          "message limit"
-        )
+        error?.message
+          ?.toLowerCase()
+          .includes(
+            "message limit"
+          )
       ) {
         setMessages((prev) => [
           ...prev,
@@ -923,24 +882,31 @@ function ChatApp() {
       <Sidebar
         chats={chats}
         activeChat={activeChat}
+
         onNewChat={
           handleNewChat
         }
+
         onSelectChat={
           loadMessages
         }
+
         onDeleteChat={
           deleteChat
         }
+
         onRenameChat={
           renameChat
         }
+
         sidebarOpen={
           sidebarOpen
         }
+
         setSidebarOpen={
           setSidebarOpen
         }
+
         darkMode={
           darkMode
         }
@@ -1021,27 +987,6 @@ function ChatApp() {
               ) : (
                 <Moon size={18} />
               )}
-            </button>
-
-            <button
-              className="logout-button"
-              type="button"
-              onClick={
-                handleLogout
-              }
-              disabled={
-                loggingOut
-              }
-              aria-label="Log out"
-              title="Log out"
-            >
-              <LogOut size={18} />
-
-              <span>
-                {loggingOut
-                  ? "Logging out..."
-                  : "Logout"}
-              </span>
             </button>
           </div>
         </motion.header>
