@@ -26,6 +26,7 @@ import QuickPrompts from "./components/QuickPrompts"
 import supabase from "./lib/supabase"
 
 const MOBILE_BREAKPOINT = 900
+const MESSAGE_LIMIT = 20
 
 function App() {
   const {
@@ -90,6 +91,7 @@ function ChatApp() {
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
   const [activeChat, setActiveChat] = useState(null)
+
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -198,9 +200,6 @@ function ChatApp() {
 
   /*
    * RATE LIMIT RESET TIMER
-   *
-   * The backend is now the ONLY place
-   * that checks/increments the limit.
    */
   useEffect(() => {
     if (!limitReached) return
@@ -618,6 +617,10 @@ function ChatApp() {
 
   /*
    * BACKEND
+   *
+   * The backend is the ONLY place
+   * that checks/increments the
+   * message rate limit.
    */
   const askBackend = async (
     question,
@@ -686,9 +689,11 @@ function ChatApp() {
     }
 
     /*
-     * BACKEND RATE LIMIT
+     * RATE LIMIT
      */
-    if (response.status === 429) {
+    if (
+      response.status === 429
+    ) {
       const minutes =
         Number(
           data?.retry_after_minutes
@@ -697,10 +702,15 @@ function ChatApp() {
       setRetryMinutes(minutes)
       setLimitReached(true)
 
-      throw new Error(
-        data?.error ||
-          `You've reached your message limit. Please try again in ${minutes} minutes.`
-      )
+      const limitError =
+        new Error(
+          data?.error ||
+            `You've reached your ${MESSAGE_LIMIT} message limit. Please try again in ${minutes} minutes.`
+        )
+
+      limitError.isRateLimit = true
+
+      throw limitError
     }
 
     if (!response.ok) {
@@ -717,9 +727,6 @@ function ChatApp() {
 
   /*
    * SEND MESSAGE
-   *
-   * IMPORTANT:
-   * Rate limit is checked ONLY by /api/ask.
    */
   const sendMessage = async (
     text,
@@ -739,46 +746,30 @@ function ChatApp() {
 
     setLoading(true)
 
+    /*
+     * Show the user message
+     * immediately in the UI.
+     */
+    const temporaryUserMessage = {
+      id:
+        `user-${Date.now()}`,
+      role: "user",
+      content:
+        cleanText,
+      image,
+    }
+
     setMessages((prev) => [
       ...prev,
-      {
-        id:
-          `user-${Date.now()}`,
-        role: "user",
-        content:
-          cleanText,
-        image,
-      },
+      temporaryUserMessage,
     ])
 
     try {
-      let chatId =
-        activeChat
-
-      if (!chatId) {
-        const chat =
-          await createChat(
-            cleanText ||
-              "Image conversation"
-          )
-
-        chatId =
-          chat.id
-      }
-
       /*
-       * Save user message
-       */
-      await saveMessage(
-        chatId,
-        "user",
-        cleanText,
-        image
-      )
-
-      /*
-       * Backend authenticates the user
-       * and checks the message limit.
+       * Ask backend FIRST.
+       *
+       * Backend verifies authentication
+       * and checks the PostgreSQL rate limit.
        */
       const data =
         await askBackend(
@@ -808,6 +799,38 @@ function ChatApp() {
       const assistantImage =
         data?.image || null
 
+      /*
+       * Only create/save the chat
+       * after the backend accepts
+       * the request.
+       */
+      let chatId =
+        activeChat
+
+      if (!chatId) {
+        const chat =
+          await createChat(
+            cleanText ||
+              "Image conversation"
+          )
+
+        chatId =
+          chat.id
+      }
+
+      /*
+       * Save USER message
+       */
+      await saveMessage(
+        chatId,
+        "user",
+        cleanText,
+        image
+      )
+
+      /*
+       * Show AI response
+       */
       setMessages((prev) => [
         ...prev,
         {
@@ -822,6 +845,9 @@ function ChatApp() {
         },
       ])
 
+      /*
+       * Save AI response
+       */
       await saveMessage(
         chatId,
         "assistant",
@@ -837,11 +863,11 @@ function ChatApp() {
       )
 
       /*
-       * Don't show a duplicate generic
-       * message when rate limited.
+       * RATE LIMIT ERROR
        */
       if (
-        error?.message?.includes(
+        error?.isRateLimit ||
+        error?.message?.toLowerCase().includes(
           "message limit"
         )
       ) {
@@ -853,14 +879,19 @@ function ChatApp() {
             role:
               "assistant",
             content:
-              error.message,
-            isError: true,
+              error.message ||
+              `You've reached your ${MESSAGE_LIMIT} message limit. Please try again later.`,
+            isError:
+              true,
           },
         ])
 
         return
       }
 
+      /*
+       * NORMAL ERROR
+       */
       setMessages((prev) => [
         ...prev,
         {
@@ -874,7 +905,8 @@ function ChatApp() {
               error?.message ||
               "Please try again."
             ),
-          isError: true,
+          isError:
+            true,
         },
       ])
     } finally {
@@ -1093,7 +1125,8 @@ function ChatApp() {
                 >
                   You've reached your
                   message limit of{" "}
-                  20 messages per
+                  {MESSAGE_LIMIT}{" "}
+                  messages per
                   hour.
                   <br />
                   Please try again in{" "}
