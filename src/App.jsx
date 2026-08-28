@@ -35,6 +35,9 @@ function App() {
 
   const [isRecovery, setIsRecovery] = useState(false)
 
+  /*
+   * PASSWORD RECOVERY
+   */
   useEffect(() => {
     const checkRecovery = () => {
       const hash = window.location.hash || ""
@@ -60,9 +63,14 @@ function App() {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
+  /*
+   * AUTH LOADING
+   */
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -73,19 +81,31 @@ function App() {
     )
   }
 
+  /*
+   * PASSWORD RESET PAGE
+   */
   if (isRecovery) {
     return <ResetPasswordPage />
   }
 
+  /*
+   * LOGIN / SIGN UP
+   */
   if (!user) {
     return <AuthPage />
   }
 
+  /*
+   * CHAT APP
+   */
   return <ChatApp />
 }
 
 function ChatApp() {
-  const { user } = useAuth()
+  const {
+    user,
+    signOut,
+  } = useAuth()
 
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
@@ -102,8 +122,9 @@ function ChatApp() {
   const [darkMode, setDarkMode] = useState(() => {
     try {
       return (
-        localStorage.getItem("lumora-dark-mode") ===
-        "true"
+        localStorage.getItem(
+          "lumora-dark-mode"
+        ) === "true"
       )
     } catch {
       return false
@@ -145,7 +166,9 @@ function ChatApp() {
           ascending: false,
         })
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       setChats(data || [])
     } catch (error) {
@@ -218,6 +241,46 @@ function ChatApp() {
   }, [limitReached])
 
   /*
+   * LOGOUT
+   */
+  const handleLogout = async () => {
+    if (loading) return
+
+    try {
+      setSidebarOpen(false)
+
+      const { error } =
+        await signOut()
+
+      if (error) {
+        console.error(
+          "Logout error:",
+          error
+        )
+        return
+      }
+
+      /*
+       * Clear local chat state
+       */
+      setMessages([])
+      setChats([])
+      setActiveChat(null)
+
+      /*
+       * Clear rate-limit state
+       */
+      setLimitReached(false)
+      setRetryMinutes(0)
+    } catch (error) {
+      console.error(
+        "Logout error:",
+        error
+      )
+    }
+  }
+
+  /*
    * CREATE CHAT
    */
   const createChat = async (
@@ -260,7 +323,8 @@ function ChatApp() {
     setChats((prev) => [
       data,
       ...prev.filter(
-        (chat) => chat.id !== data.id
+        (chat) =>
+          chat.id !== data.id
       ),
     ])
 
@@ -354,7 +418,9 @@ function ChatApp() {
           ascending: true,
         })
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       setMessages(
         (data || []).map(
@@ -421,7 +487,9 @@ function ChatApp() {
           user.id
         )
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       setChats((prev) =>
         prev.filter(
@@ -479,7 +547,9 @@ function ChatApp() {
           user.id
         )
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       setChats((prev) =>
         prev.map((chat) =>
@@ -580,9 +650,8 @@ function ChatApp() {
   /*
    * BACKEND
    *
-   * The backend is the ONLY place
-   * that checks/increments the
-   * message rate limit.
+   * Backend checks and increments
+   * the message rate limit.
    */
   const askBackend = async (
     question,
@@ -897,6 +966,13 @@ function ChatApp() {
 
         onRenameChat={
           renameChat
+        }
+
+        /*
+         * LOGOUT CONNECTION
+         */
+        onLogout={
+          handleLogout
         }
 
         sidebarOpen={
