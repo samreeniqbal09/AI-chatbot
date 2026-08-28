@@ -14,6 +14,7 @@ import {
   Moon,
   Sun,
   Sparkles,
+  LogOut,
 } from "lucide-react"
 
 import { motion } from "motion/react"
@@ -25,6 +26,7 @@ import QuickPrompts from "./components/QuickPrompts"
 import supabase from "./lib/supabase"
 
 const MOBILE_BREAKPOINT = 900
+const MESSAGE_LIMIT = 20
 
 function App() {
   const {
@@ -34,29 +36,15 @@ function App() {
 
   const [isRecovery, setIsRecovery] = useState(false)
 
-  /*
-   * PASSWORD RECOVERY
-   *
-   * Supabase sends the user back to the Vercel URL
-   * after clicking the password reset email.
-   *
-   * We detect both:
-   * - #type=recovery
-   * - ?type=recovery
-   *
-   * We also listen for Supabase's PASSWORD_RECOVERY event.
-   */
-
   useEffect(() => {
     const checkRecovery = () => {
       const hash = window.location.hash || ""
       const search = window.location.search || ""
 
-      const recovery =
+      if (
         hash.includes("type=recovery") ||
         search.includes("type=recovery")
-
-      if (recovery) {
+      ) {
         setIsRecovery(true)
       }
     }
@@ -65,20 +53,16 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsRecovery(true)
+    } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setIsRecovery(true)
+        }
       }
-    })
+    )
 
-    return () => {
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
-
-  /*
-   * AUTH LOADING
-   */
 
   if (authLoading) {
     return (
@@ -90,48 +74,31 @@ function App() {
     )
   }
 
-  /*
-   * PASSWORD RESET
-   *
-   * Must be checked before the normal user check.
-   */
-
   if (isRecovery) {
     return <ResetPasswordPage />
   }
-
-  /*
-   * NOT LOGGED IN
-   */
 
   if (!user) {
     return <AuthPage />
   }
 
-  /*
-   * LOGGED IN
-   */
-
   return <ChatApp />
 }
 
-
-/* =========================================================
-   CHAT APP
-   ========================================================= */
-
 function ChatApp() {
+  const { user } = useAuth()
+
   const [messages, setMessages] = useState([])
   const [chats, setChats] = useState([])
   const [activeChat, setActiveChat] = useState(null)
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  const [limitReached, setLimitReached] = useState(false)
+  const [retryMinutes, setRetryMinutes] = useState(0)
 
   const messagesEndRef = useRef(null)
-
-  /*
-   * DARK MODE
-   */
 
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -143,10 +110,6 @@ function ChatApp() {
       return false
     }
   })
-
-  /*
-   * THEME
-   */
 
   useEffect(() => {
     document.documentElement.classList.toggle(
@@ -162,11 +125,9 @@ function ChatApp() {
     } catch {}
   }, [darkMode])
 
-  /*
-   * LOAD CHATS WHEN APP OPENS
-   */
-
   const loadChats = useCallback(async () => {
+    if (!user?.id) return
+
     try {
       const {
         data,
@@ -174,27 +135,22 @@ function ChatApp() {
       } = await supabase
         .from("chat_sessions")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", {
           ascending: false,
         })
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       setChats(data || [])
     } catch (error) {
       console.error("Load chats:", error)
     }
-  }, [])
+  }, [user?.id])
 
   useEffect(() => {
     loadChats()
   }, [loadChats])
-
-  /*
-   * AUTO SCROLL
-   */
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -202,10 +158,6 @@ function ChatApp() {
       block: "end",
     })
   }, [messages, loading])
-
-  /*
-   * RESPONSIVE SIDEBAR
-   */
 
   useEffect(() => {
     const handleResize = () => {
@@ -228,14 +180,125 @@ function ChatApp() {
   }, [])
 
   /*
+   * RATE LIMIT RESET TIMER
+   */
+  useEffect(() => {
+    if (!limitReached) return
+
+    const timer = setInterval(() => {
+      setRetryMinutes((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          setLimitReached(false)
+          return 0
+        }
+
+        return prev - 1
+      })
+    }, 60000)
+
+    return () => clearInterval(timer)
+  }, [limitReached])
+
+  /*
+   * CHECK MESSAGE LIMIT
+   */
+  const checkMessageLimit = async () => {
+    if (!user?.id) {
+      throw new Error(
+        "You must be signed in."
+      )
+    }
+
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      "check_message_limit",
+      {
+        p_user_id: user.id,
+        p_limit: MESSAGE_LIMIT,
+      }
+    )
+
+    if (error) {
+      console.error(
+        "Rate limit error:",
+        error
+      )
+
+      throw new Error(
+        "Unable to check message limit."
+      )
+    }
+
+    if (!data?.allowed) {
+      const minutes =
+        Number(
+          data?.retry_after_minutes
+        ) || 1
+
+      setRetryMinutes(minutes)
+      setLimitReached(true)
+
+      return false
+    }
+
+    setLimitReached(false)
+    setRetryMinutes(0)
+
+    return true
+  }
+
+  /*
+   * LOGOUT
+   */
+  const handleLogout = async () => {
+    if (loggingOut) return
+
+    try {
+      setLoggingOut(true)
+
+      const {
+        error,
+      } = await supabase.auth.signOut()
+
+      if (error) throw error
+
+      setMessages([])
+      setChats([])
+      setActiveChat(null)
+      setSidebarOpen(false)
+    } catch (error) {
+      console.error(
+        "Logout error:",
+        error
+      )
+
+      alert(
+        error?.message ||
+          "Unable to log out. Please try again."
+      )
+    } finally {
+      setLoggingOut(false)
+    }
+  }
+
+  /*
    * CREATE CHAT
    */
-
   const createChat = async (
     text = "New Chat"
   ) => {
+    if (!user?.id) {
+      throw new Error(
+        "You must be signed in to create a chat."
+      )
+    }
+
     const title =
-      text.trim().slice(0, 35) || "New Chat"
+      text.trim().slice(0, 35) ||
+      "New Chat"
 
     const {
       data,
@@ -244,6 +307,7 @@ function ChatApp() {
       .from("chat_sessions")
       .insert({
         title,
+        user_id: user.id,
       })
       .select()
       .single()
@@ -275,7 +339,6 @@ function ChatApp() {
   /*
    * PARSE STORED MESSAGE
    */
-
   const parseMessage = (message) => {
     let content =
       message.content || ""
@@ -283,9 +346,10 @@ function ChatApp() {
     let image = null
 
     try {
-      const parsed = JSON.parse(
-        message.content
-      )
+      const parsed =
+        JSON.parse(
+          message.content
+        )
 
       if (
         parsed &&
@@ -298,9 +362,7 @@ function ChatApp() {
         image =
           parsed.image || null
       }
-    } catch {
-      // Normal text message
-    }
+    } catch {}
 
     return {
       id: message.id,
@@ -313,15 +375,38 @@ function ChatApp() {
   /*
    * LOAD MESSAGES
    */
-
   const loadMessages = async (
     chatId
   ) => {
-    if (!chatId) {
+    if (
+      !chatId ||
+      !user?.id
+    ) {
       return
     }
 
     try {
+      const {
+        data: chat,
+        error: chatError,
+      } = await supabase
+        .from("chat_sessions")
+        .select("id")
+        .eq("id", chatId)
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (chatError) {
+        throw chatError
+      }
+
+      if (!chat) {
+        console.error(
+          "Chat does not belong to current user."
+        )
+        return
+      }
+
       const {
         data,
         error,
@@ -332,16 +417,11 @@ function ChatApp() {
           "session_id",
           chatId
         )
-        .order(
-          "created_at",
-          {
-            ascending: true,
-          }
-        )
+        .order("created_at", {
+          ascending: true,
+        })
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       setMessages(
         (data || []).map(
@@ -368,11 +448,8 @@ function ChatApp() {
   /*
    * NEW CHAT
    */
-
   const handleNewChat = () => {
-    if (loading) {
-      return
-    }
+    if (loading) return
 
     setMessages([])
     setActiveChat(null)
@@ -388,13 +465,13 @@ function ChatApp() {
   /*
    * DELETE CHAT
    */
-
   const deleteChat = async (
     chatId
   ) => {
     if (
       !chatId ||
-      loading
+      loading ||
+      !user?.id
     ) {
       return
     }
@@ -405,14 +482,13 @@ function ChatApp() {
       } = await supabase
         .from("chat_sessions")
         .delete()
+        .eq("id", chatId)
         .eq(
-          "id",
-          chatId
+          "user_id",
+          user.id
         )
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       setChats((prev) =>
         prev.filter(
@@ -438,7 +514,6 @@ function ChatApp() {
   /*
    * RENAME CHAT
    */
-
   const renameChat = async (
     chatId,
     newTitle
@@ -451,7 +526,8 @@ function ChatApp() {
     if (
       !chatId ||
       !title ||
-      loading
+      loading ||
+      !user?.id
     ) {
       return
     }
@@ -464,14 +540,13 @@ function ChatApp() {
         .update({
           title,
         })
+        .eq("id", chatId)
         .eq(
-          "id",
-          chatId
+          "user_id",
+          user.id
         )
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       setChats((prev) =>
         prev.map((chat) =>
@@ -494,16 +569,44 @@ function ChatApp() {
   /*
    * SAVE MESSAGE
    */
-
   const saveMessage = async (
     sessionId,
     role,
     content,
     image = null
   ) => {
-    if (!sessionId) {
+    if (
+      !sessionId ||
+      !user?.id
+    ) {
       throw new Error(
         "Chat session was not created."
+      )
+    }
+
+    const {
+      data: session,
+      error: sessionError,
+    } = await supabase
+      .from("chat_sessions")
+      .select("id")
+      .eq(
+        "id",
+        sessionId
+      )
+      .eq(
+        "user_id",
+        user.id
+      )
+      .maybeSingle()
+
+    if (sessionError) {
+      throw sessionError
+    }
+
+    if (!session) {
+      throw new Error(
+        "You do not have access to this chat."
       )
     }
 
@@ -544,11 +647,32 @@ function ChatApp() {
   /*
    * BACKEND
    */
-
   const askBackend = async (
     question,
     image
   ) => {
+    const {
+      data: {
+        session,
+      },
+      error: sessionError,
+    } =
+      await supabase.auth.getSession()
+
+    if (sessionError) {
+      throw new Error(
+        "Unable to verify your login session."
+      )
+    }
+
+    if (
+      !session?.access_token
+    ) {
+      throw new Error(
+        "Your session has expired. Please sign in again."
+      )
+    }
+
     const response =
       await fetch(
         "/api/ask",
@@ -557,6 +681,8 @@ function ChatApp() {
           headers: {
             "Content-Type":
               "application/json",
+            Authorization:
+              `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             question,
@@ -602,7 +728,6 @@ function ChatApp() {
   /*
    * SEND MESSAGE
    */
-
   const sendMessage = async (
     text,
     image = null
@@ -612,16 +737,46 @@ function ChatApp() {
 
     if (
       (!cleanText && !image) ||
-      loading
+      loading ||
+      !user?.id ||
+      limitReached
     ) {
       return
     }
 
-    setLoading(true)
-
     /*
-     * Show user's message immediately.
+     * CHECK RATE LIMIT
+     * BEFORE sending the message.
      */
+    try {
+      const allowed =
+        await checkMessageLimit()
+
+      if (!allowed) {
+        return
+      }
+    } catch (error) {
+      console.error(
+        "Rate limit check:",
+        error
+      )
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id:
+            `limit-error-${Date.now()}`,
+          role: "assistant",
+          content:
+            "Sorry, I couldn't verify your message limit. Please try again.",
+          isError: true,
+        },
+      ])
+
+      return
+    }
+
+    setLoading(true)
 
     setMessages((prev) => [
       ...prev,
@@ -639,11 +794,6 @@ function ChatApp() {
       let chatId =
         activeChat
 
-      /*
-       * Create a chat automatically
-       * when this is the first message.
-       */
-
       if (!chatId) {
         const chat =
           await createChat(
@@ -651,12 +801,9 @@ function ChatApp() {
               "Image conversation"
           )
 
-        chatId = chat.id
+        chatId =
+          chat.id
       }
-
-      /*
-       * Save user message.
-       */
 
       await saveMessage(
         chatId,
@@ -664,10 +811,6 @@ function ChatApp() {
         cleanText,
         image
       )
-
-      /*
-       * Ask AI backend.
-       */
 
       const data =
         await askBackend(
@@ -697,10 +840,6 @@ function ChatApp() {
       const assistantImage =
         data?.image || null
 
-      /*
-       * Show AI response.
-       */
-
       setMessages((prev) => [
         ...prev,
         {
@@ -715,20 +854,12 @@ function ChatApp() {
         },
       ])
 
-      /*
-       * Save AI response.
-       */
-
       await saveMessage(
         chatId,
         "assistant",
         cleanAnswer,
         assistantImage
       )
-
-      /*
-       * Refresh sidebar.
-       */
 
       await loadChats()
     } catch (error) {
@@ -758,16 +889,10 @@ function ChatApp() {
     }
   }
 
-  /*
-   * UI
-   */
-
   return (
     <div
       className={`app ${
-        darkMode
-          ? "dark"
-          : ""
+        darkMode ? "dark" : ""
       }`}
     >
       <Sidebar
@@ -797,8 +922,6 @@ function ChatApp() {
       />
 
       <main className="main-content">
-        {/* HEADER */}
-
         <motion.header
           className="chat-header"
           initial={{
@@ -818,8 +941,7 @@ function ChatApp() {
             type="button"
             onClick={() =>
               setSidebarOpen(
-                (prev) =>
-                  !prev
+                (prev) => !prev
               )
             }
             aria-label="Toggle sidebar"
@@ -829,9 +951,7 @@ function ChatApp() {
 
           <div className="header-center">
             <div className="header-logo">
-              <Sparkles
-                size={15}
-              />
+              <Sparkles size={15} />
             </div>
 
             <div className="header-brand-text">
@@ -851,39 +971,58 @@ function ChatApp() {
             </span>
           </div>
 
-          <button
-            className="theme-button"
-            type="button"
-            onClick={() =>
-              setDarkMode(
-                (prev) =>
-                  !prev
-              )
-            }
-            aria-label={
-              darkMode
-                ? "Switch to light mode"
-                : "Switch to dark mode"
-            }
-            title={
-              darkMode
-                ? "Light mode"
-                : "Dark mode"
-            }
-          >
-            {darkMode ? (
-              <Sun size={18} />
-            ) : (
-              <Moon size={18} />
-            )}
-          </button>
+          <div className="header-actions">
+            <button
+              className="theme-button"
+              type="button"
+              onClick={() =>
+                setDarkMode(
+                  (prev) => !prev
+                )
+              }
+              aria-label={
+                darkMode
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+              title={
+                darkMode
+                  ? "Light mode"
+                  : "Dark mode"
+              }
+            >
+              {darkMode ? (
+                <Sun size={18} />
+              ) : (
+                <Moon size={18} />
+              )}
+            </button>
+
+            <button
+              className="logout-button"
+              type="button"
+              onClick={
+                handleLogout
+              }
+              disabled={
+                loggingOut
+              }
+              aria-label="Log out"
+              title="Log out"
+            >
+              <LogOut size={18} />
+
+              <span>
+                {loggingOut
+                  ? "Logging out..."
+                  : "Logout"}
+              </span>
+            </button>
+          </div>
         </motion.header>
 
-        {/* MESSAGES */}
-
         <section className="messages-area">
-          {messages.length ===
-          0 ? (
+          {messages.length === 0 ? (
             <motion.div
               className="welcome-screen"
               initial={{
@@ -909,9 +1048,7 @@ function ChatApp() {
                   opacity: 1,
                 }}
               >
-                <Sparkles
-                  size={27}
-                />
+                <Sparkles size={27} />
               </motion.div>
 
               <h1>
@@ -949,6 +1086,35 @@ function ChatApp() {
                 )
               )}
 
+              {limitReached && (
+                <motion.div
+                  className="rate-limit-message"
+                  initial={{
+                    opacity: 0,
+                    y: 8,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                >
+                  You've reached your
+                  message limit of{" "}
+                  {MESSAGE_LIMIT}{" "}
+                  messages per hour.
+                  <br />
+                  Please try again in{" "}
+                  <strong>
+                    {retryMinutes}{" "}
+                    minute
+                    {retryMinutes !== 1
+                      ? "s"
+                      : ""}
+                  </strong>
+                  .
+                </motion.div>
+              )}
+
               {loading && (
                 <motion.div
                   className="typing-row"
@@ -962,9 +1128,7 @@ function ChatApp() {
                   }}
                 >
                   <div className="typing-avatar">
-                    <Sparkles
-                      size={14}
-                    />
+                    <Sparkles size={14} />
                   </div>
 
                   <div className="typing-indicator">
@@ -984,14 +1148,11 @@ function ChatApp() {
           )}
         </section>
 
-        {/* INPUT */}
-
         <ChatInput
-          onSend={
-            sendMessage
-          }
+          onSend={sendMessage}
           loading={
-            loading
+            loading ||
+            limitReached
           }
         />
       </main>

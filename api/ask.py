@@ -1,7 +1,7 @@
 import json
 import os
-import time
-from collections import defaultdict, deque
+import urllib.request
+import urllib.error
 from http.server import BaseHTTPRequestHandler
 
 from openai import OpenAI
@@ -11,57 +11,9 @@ from openai import OpenAI
 # CONFIG
 # =========================================================
 
-MAX_REQUEST_SIZE = 8 * 1024 * 1024  # 8 MB
+MAX_REQUEST_SIZE = 8 * 1024 * 1024
 MAX_QUESTION_LENGTH = 12000
-
-# Simple per-instance rate limit.
-# 10 requests per 60 seconds per client.
-RATE_LIMIT = 10
-RATE_WINDOW = 60
-
-request_log = defaultdict(deque)
-
-
-# =========================================================
-# RATE LIMITING
-# =========================================================
-
-def get_client_key(handler):
-    """
-    Uses the authenticated user ID when available.
-    Falls back to the connecting IP.
-    """
-    user_id = getattr(handler, "user_id", None)
-
-    if user_id:
-        return f"user:{user_id}"
-
-    forwarded_for = handler.headers.get("X-Forwarded-For")
-
-    if forwarded_for:
-        return f"ip:{forwarded_for.split(',')[0].strip()}"
-
-    return f"ip:{handler.client_address[0]}"
-
-
-def check_rate_limit(key):
-    now = time.time()
-    requests = request_log[key]
-
-    while requests and now - requests[0] > RATE_WINDOW:
-        requests.popleft()
-
-    if len(requests) >= RATE_LIMIT:
-        retry_after = max(
-            1,
-            int(RATE_WINDOW - (now - requests[0]))
-        )
-
-        return False, retry_after
-
-    requests.append(now)
-
-    return True, None
+MESSAGE_LIMIT = 20
 
 
 # =========================================================
@@ -70,9 +22,9 @@ def check_rate_limit(key):
 
 class handler(BaseHTTPRequestHandler):
 
-    # -----------------------------------------------------
+    # =====================================================
     # POST
-    # -----------------------------------------------------
+    # =====================================================
 
     def do_POST(self):
         try:
@@ -81,7 +33,6 @@ class handler(BaseHTTPRequestHandler):
             # ---------------------------------------------
 
             origin = self.headers.get("Origin", "")
-
             allowed_origin = os.environ.get(
                 "ALLOWED_ORIGIN",
                 "*"
@@ -124,9 +75,7 @@ class handler(BaseHTTPRequestHandler):
             if not access_token:
                 self.send_json(
                     {
-                        "error": (
-                            "Invalid authentication token."
-                        )
+                        "error": "Invalid authentication token."
                     },
                     401
                 )
@@ -149,61 +98,70 @@ class handler(BaseHTTPRequestHandler):
             self.user_id = user_id
 
             # ---------------------------------------------
-            # RATE LIMIT
+            # SERVER-SIDE RATE LIMIT
             # ---------------------------------------------
 
-            rate_key = get_client_key(self)
-
-            allowed, retry_after = check_rate_limit(
-                rate_key
+            rate_result = self.check_supabase_limit(
+                access_token,
+                user_id
             )
 
-            if not allowed:
-                self.send_response(429)
-
-                self.send_header(
-                    "Content-Type",
-                    "application/json"
-                )
-
-                self.send_header(
-                    "Retry-After",
-                    str(retry_after)
-                )
-
-                self.send_cors_headers()
-
-                self.end_headers()
-
-                response = json.dumps(
+            if rate_result is None:
+                self.send_json(
                     {
                         "error": (
-                            "Too many requests. "
-                            "Please wait a moment and try again."
+                            "Unable to check message limit. "
+                            "Please try again."
                         )
-                    }
-                ).encode("utf-8")
+                    },
+                    500
+                )
+                return
 
-                self.wfile.write(response)
+            if not rate_result.get("allowed", False):
+                retry_minutes = max(
+                    1,
+                    int(
+                        rate_result.get(
+                            "retry_after_minutes",
+                            1
+                        )
+                    )
+                )
 
+                self.send_json(
+                    {
+                        "error": (
+                            "You've reached your message limit. "
+                            f"Please try again in {retry_minutes} "
+                            "minutes."
+                        ),
+                        "rate_limited": True,
+                        "retry_after_minutes": retry_minutes,
+                        "remaining": 0,
+                    },
+                    429,
+                    retry_after=retry_minutes * 60
+                )
                 return
 
             # ---------------------------------------------
             # CONTENT LENGTH
             # ---------------------------------------------
 
-            content_length = int(
-                self.headers.get(
-                    "Content-Length",
-                    "0"
+            try:
+                content_length = int(
+                    self.headers.get(
+                        "Content-Length",
+                        "0"
+                    )
                 )
-            )
+            except ValueError:
+                content_length = 0
 
             if content_length <= 0:
                 self.send_json(
-                    {
-                        "error": "Empty request."
-                    },
+                    {"error": "Empty request."},
                     400
                 )
                 return
@@ -228,9 +186,7 @@ class handler(BaseHTTPRequestHandler):
 
             if not body:
                 self.send_json(
-                    {
-                        "error": "Empty request."
-                    },
+                    {"error": "Empty request."},
                     400
                 )
                 return
@@ -243,18 +199,14 @@ class handler(BaseHTTPRequestHandler):
                 data = json.loads(body)
             except json.JSONDecodeError:
                 self.send_json(
-                    {
-                        "error": "Invalid request data."
-                    },
+                    {"error": "Invalid request data."},
                     400
                 )
                 return
 
             if not isinstance(data, dict):
                 self.send_json(
-                    {
-                        "error": "Invalid request format."
-                    },
+                    {"error": "Invalid request format."},
                     400
                 )
                 return
@@ -286,25 +238,21 @@ class handler(BaseHTTPRequestHandler):
             image = data.get("image")
 
             if image is not None:
+
                 if not isinstance(image, str):
                     self.send_json(
-                        {
-                            "error": "Invalid image data."
-                        },
+                        {"error": "Invalid image data."},
                         400
                     )
                     return
 
                 if not image.startswith("data:image/"):
                     self.send_json(
-                        {
-                            "error": "Invalid image format."
-                        },
+                        {"error": "Invalid image format."},
                         400
                     )
                     return
 
-                # Prevent unexpectedly huge image payloads.
                 if len(image) > MAX_REQUEST_SIZE:
                     self.send_json(
                         {
@@ -318,7 +266,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
             # ---------------------------------------------
-            # EMPTY MESSAGE CHECK
+            # EMPTY MESSAGE
             # ---------------------------------------------
 
             if not question and not image:
@@ -385,9 +333,7 @@ class handler(BaseHTTPRequestHandler):
             # ---------------------------------------------
 
             client = OpenAI(
-                base_url=(
-                    "https://openrouter.ai/api/v1"
-                ),
+                base_url="https://openrouter.ai/api/v1",
                 api_key=api_key,
             )
 
@@ -436,16 +382,15 @@ class handler(BaseHTTPRequestHandler):
                 {
                     "answer": answer,
                     "image": image or None,
+                    "remaining": rate_result.get(
+                        "remaining"
+                    ),
                 }
             )
 
         except ValueError:
             self.send_json(
-                {
-                    "error": (
-                        "Invalid request."
-                    )
-                },
+                {"error": "Invalid request."},
                 400
             )
 
@@ -455,8 +400,6 @@ class handler(BaseHTTPRequestHandler):
                 repr(error)
             )
 
-            # Don't expose internal backend details
-            # to users.
             self.send_json(
                 {
                     "error": (
@@ -484,11 +427,7 @@ class handler(BaseHTTPRequestHandler):
 
     def verify_user(self, access_token):
         """
-        Verify the Supabase access token by asking
-        Supabase Auth for the authenticated user.
-
-        This avoids trusting user information supplied
-        by the browser.
+        Verify the Supabase access token.
         """
 
         supabase_url = os.environ.get(
@@ -513,8 +452,6 @@ class handler(BaseHTTPRequestHandler):
             return None
 
         try:
-            import urllib.request
-
             url = (
                 supabase_url.rstrip("/")
                 + "/auth/v1/user"
@@ -539,9 +476,9 @@ class handler(BaseHTTPRequestHandler):
                 if response.status != 200:
                     return None
 
-                raw = response.read()
-
-                user = json.loads(raw)
+                user = json.loads(
+                    response.read()
+                )
 
                 return user.get("id")
 
@@ -550,6 +487,115 @@ class handler(BaseHTTPRequestHandler):
                 "AUTH ERROR:",
                 repr(error)
             )
+            return None
+
+    # =====================================================
+    # SUPABASE RATE LIMIT
+    # =====================================================
+
+    def check_supabase_limit(
+        self,
+        access_token,
+        user_id
+    ):
+        """
+        Check and increment the user's hourly
+        message count through Supabase RPC.
+        """
+
+        supabase_url = os.environ.get(
+            "VITE_SUPABASE_URL"
+        )
+
+        supabase_anon_key = os.environ.get(
+            "VITE_SUPABASE_ANON_KEY"
+        )
+
+        if not supabase_url:
+            print(
+                "RATE LIMIT ERROR: "
+                "VITE_SUPABASE_URL missing"
+            )
+            return None
+
+        if not supabase_anon_key:
+            print(
+                "RATE LIMIT ERROR: "
+                "VITE_SUPABASE_ANON_KEY missing"
+            )
+            return None
+
+        try:
+            url = (
+                supabase_url.rstrip("/")
+                + "/rest/v1/rpc/check_message_limit"
+            )
+
+            payload = json.dumps(
+                {
+                    "p_user_id": user_id,
+                    "p_limit": MESSAGE_LIMIT,
+                }
+            ).encode("utf-8")
+
+            request = urllib.request.Request(
+                url,
+                data=payload,
+                method="POST",
+                headers={
+                    "apikey": supabase_anon_key,
+                    "Authorization": (
+                        f"Bearer {access_token}"
+                    ),
+                    "Content-Type": (
+                        "application/json"
+                    ),
+                },
+            )
+
+            with urllib.request.urlopen(
+                request,
+                timeout=10
+            ) as response:
+
+                if response.status != 200:
+                    print(
+                        "RATE LIMIT ERROR: "
+                        f"Supabase returned {response.status}"
+                    )
+                    return None
+
+                return json.loads(
+                    response.read()
+                )
+
+        except urllib.error.HTTPError as error:
+            try:
+                error_body = (
+                    error
+                    .read()
+                    .decode(
+                        "utf-8",
+                        errors="replace"
+                    )
+                )
+            except Exception:
+                error_body = ""
+
+            print(
+                "RATE LIMIT HTTP ERROR:",
+                error.code,
+                error_body
+            )
+
+            return None
+
+        except Exception as error:
+            print(
+                "RATE LIMIT ERROR:",
+                repr(error)
+            )
+
             return None
 
     # =====================================================
@@ -589,7 +635,8 @@ class handler(BaseHTTPRequestHandler):
     def send_json(
         self,
         data,
-        status_code=200
+        status_code=200,
+        retry_after=None
     ):
         response = json.dumps(
             data,
@@ -612,6 +659,12 @@ class handler(BaseHTTPRequestHandler):
             "Cache-Control",
             "no-store"
         )
+
+        if retry_after is not None:
+            self.send_header(
+                "Retry-After",
+                str(int(retry_after))
+            )
 
         self.send_cors_headers()
 
