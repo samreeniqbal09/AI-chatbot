@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
 } from "react"
+
 import supabase from "./supabase"
 
 const AuthContext = createContext(null)
@@ -14,30 +15,72 @@ const REDIRECT_URL =
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [recoveryMode, setRecoveryMode] =
-    useState(false)
+  const [recoveryMode, setRecoveryMode] = useState(false)
 
   useEffect(() => {
     let mounted = true
 
+    // ---------------------------------------------
+    // GET CURRENT SESSION
+    // ---------------------------------------------
+
     const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      try {
+        const {
+          data,
+          error,
+        } = await supabase.auth.getSession()
 
-      if (!mounted) return
+        if (error) {
+          console.error(
+            "Supabase session error:",
+            error
+          )
 
-      setUser(session?.user ?? null)
-      setLoading(false)
+          if (mounted) {
+            setUser(null)
+          }
+
+          return
+        }
+
+        if (!mounted) return
+
+        setUser(data?.session?.user ?? null)
+      } catch (error) {
+        console.error(
+          "Authentication initialization error:",
+          error
+        )
+
+        if (mounted) {
+          setUser(null)
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
 
     getSession()
 
+    // ---------------------------------------------
+    // AUTH STATE CHANGES
+    // ---------------------------------------------
+
     const {
-      data: { subscription },
+      data: {
+        subscription,
+      },
     } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mounted) return
+
+        console.log(
+          "Auth event:",
+          event
+        )
 
         if (event === "PASSWORD_RECOVERY") {
           setRecoveryMode(true)
@@ -45,9 +88,11 @@ export function AuthProvider({ children }) {
 
         if (event === "SIGNED_OUT") {
           setRecoveryMode(false)
+          setUser(null)
+        } else {
+          setUser(session?.user ?? null)
         }
 
-        setUser(session?.user ?? null)
         setLoading(false)
       }
     )
@@ -58,8 +103,14 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // ---------------------------------------------
   // SIGN UP
-  const signUp = async (email, password) => {
+  // ---------------------------------------------
+
+  const signUp = async (
+    email,
+    password
+  ) => {
     return await supabase.auth.signUp({
       email,
       password,
@@ -69,16 +120,27 @@ export function AuthProvider({ children }) {
     })
   }
 
+  // ---------------------------------------------
   // SIGN IN
-  const signIn = async (email, password) => {
+  // ---------------------------------------------
+
+  const signIn = async (
+    email,
+    password
+  ) => {
     return await supabase.auth.signInWithPassword({
       email,
       password,
     })
   }
 
-  // SEND PASSWORD RESET EMAIL
-  const resetPassword = async (email) => {
+  // ---------------------------------------------
+  // PASSWORD RESET
+  // ---------------------------------------------
+
+  const resetPassword = async (
+    email
+  ) => {
     return await supabase.auth.resetPasswordForEmail(
       email,
       {
@@ -87,14 +149,22 @@ export function AuthProvider({ children }) {
     )
   }
 
+  // ---------------------------------------------
   // UPDATE PASSWORD
-  const updatePassword = async (password) => {
+  // ---------------------------------------------
+
+  const updatePassword = async (
+    password
+  ) => {
     return await supabase.auth.updateUser({
       password,
     })
   }
 
+  // ---------------------------------------------
   // SIGN OUT
+  // ---------------------------------------------
+
   const signOut = async () => {
     return await supabase.auth.signOut()
   }

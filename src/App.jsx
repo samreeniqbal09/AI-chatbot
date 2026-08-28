@@ -26,7 +26,6 @@ import QuickPrompts from "./components/QuickPrompts"
 import supabase from "./lib/supabase"
 
 const MOBILE_BREAKPOINT = 900
-const MESSAGE_LIMIT = 20
 
 function App() {
   const {
@@ -111,6 +110,9 @@ function ChatApp() {
     }
   })
 
+  /*
+   * DARK MODE
+   */
   useEffect(() => {
     document.documentElement.classList.toggle(
       "dark",
@@ -125,6 +127,9 @@ function ChatApp() {
     } catch {}
   }, [darkMode])
 
+  /*
+   * LOAD CHATS
+   */
   const loadChats = useCallback(async () => {
     if (!user?.id) return
 
@@ -144,7 +149,10 @@ function ChatApp() {
 
       setChats(data || [])
     } catch (error) {
-      console.error("Load chats:", error)
+      console.error(
+        "Load chats:",
+        error
+      )
     }
   }, [user?.id])
 
@@ -152,6 +160,9 @@ function ChatApp() {
     loadChats()
   }, [loadChats])
 
+  /*
+   * AUTO SCROLL
+   */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -159,9 +170,15 @@ function ChatApp() {
     })
   }, [messages, loading])
 
+  /*
+   * MOBILE SIDEBAR
+   */
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= MOBILE_BREAKPOINT) {
+      if (
+        window.innerWidth >=
+        MOBILE_BREAKPOINT
+      ) {
         setSidebarOpen(false)
       }
     }
@@ -181,6 +198,9 @@ function ChatApp() {
 
   /*
    * RATE LIMIT RESET TIMER
+   *
+   * The backend is now the ONLY place
+   * that checks/increments the limit.
    */
   useEffect(() => {
     if (!limitReached) return
@@ -201,56 +221,6 @@ function ChatApp() {
   }, [limitReached])
 
   /*
-   * CHECK MESSAGE LIMIT
-   */
-  const checkMessageLimit = async () => {
-    if (!user?.id) {
-      throw new Error(
-        "You must be signed in."
-      )
-    }
-
-    const {
-      data,
-      error,
-    } = await supabase.rpc(
-      "check_message_limit",
-      {
-        p_user_id: user.id,
-        p_limit: MESSAGE_LIMIT,
-      }
-    )
-
-    if (error) {
-      console.error(
-        "Rate limit error:",
-        error
-      )
-
-      throw new Error(
-        "Unable to check message limit."
-      )
-    }
-
-    if (!data?.allowed) {
-      const minutes =
-        Number(
-          data?.retry_after_minutes
-        ) || 1
-
-      setRetryMinutes(minutes)
-      setLimitReached(true)
-
-      return false
-    }
-
-    setLimitReached(false)
-    setRetryMinutes(0)
-
-    return true
-  }
-
-  /*
    * LOGOUT
    */
   const handleLogout = async () => {
@@ -269,6 +239,8 @@ function ChatApp() {
       setChats([])
       setActiveChat(null)
       setSidebarOpen(false)
+      setLimitReached(false)
+      setRetryMinutes(0)
     } catch (error) {
       console.error(
         "Logout error:",
@@ -713,6 +685,24 @@ function ChatApp() {
       )
     }
 
+    /*
+     * BACKEND RATE LIMIT
+     */
+    if (response.status === 429) {
+      const minutes =
+        Number(
+          data?.retry_after_minutes
+        ) || 1
+
+      setRetryMinutes(minutes)
+      setLimitReached(true)
+
+      throw new Error(
+        data?.error ||
+          `You've reached your message limit. Please try again in ${minutes} minutes.`
+      )
+    }
+
     if (!response.ok) {
       throw new Error(
         data?.error ||
@@ -727,6 +717,9 @@ function ChatApp() {
 
   /*
    * SEND MESSAGE
+   *
+   * IMPORTANT:
+   * Rate limit is checked ONLY by /api/ask.
    */
   const sendMessage = async (
     text,
@@ -741,38 +734,6 @@ function ChatApp() {
       !user?.id ||
       limitReached
     ) {
-      return
-    }
-
-    /*
-     * CHECK RATE LIMIT
-     * BEFORE sending the message.
-     */
-    try {
-      const allowed =
-        await checkMessageLimit()
-
-      if (!allowed) {
-        return
-      }
-    } catch (error) {
-      console.error(
-        "Rate limit check:",
-        error
-      )
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id:
-            `limit-error-${Date.now()}`,
-          role: "assistant",
-          content:
-            "Sorry, I couldn't verify your message limit. Please try again.",
-          isError: true,
-        },
-      ])
-
       return
     }
 
@@ -805,6 +766,9 @@ function ChatApp() {
           chat.id
       }
 
+      /*
+       * Save user message
+       */
       await saveMessage(
         chatId,
         "user",
@@ -812,6 +776,10 @@ function ChatApp() {
         image
       )
 
+      /*
+       * Backend authenticates the user
+       * and checks the message limit.
+       */
       const data =
         await askBackend(
           cleanText,
@@ -867,6 +835,31 @@ function ChatApp() {
         "Chat error:",
         error
       )
+
+      /*
+       * Don't show a duplicate generic
+       * message when rate limited.
+       */
+      if (
+        error?.message?.includes(
+          "message limit"
+        )
+      ) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id:
+              `limit-error-${Date.now()}`,
+            role:
+              "assistant",
+            content:
+              error.message,
+            isError: true,
+          },
+        ])
+
+        return
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -1100,8 +1093,8 @@ function ChatApp() {
                 >
                   You've reached your
                   message limit of{" "}
-                  {MESSAGE_LIMIT}{" "}
-                  messages per hour.
+                  20 messages per
+                  hour.
                   <br />
                   Please try again in{" "}
                   <strong>
