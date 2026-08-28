@@ -1028,7 +1028,7 @@ body.dark .lumora-auth-footer,
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #a1a1aa;
+  color: var(--muted);
   text-align: center;
   font-size: 10px;
 }
@@ -1050,6 +1050,7 @@ body.dark .lumora-auth-footer,
 
 /* =========================================================
    CLEAN SIDEBAR LOGOUT
+   (rebuilt to fix the cramped icon/text alignment)
 ========================================================= */
 
 .sidebar-footer,
@@ -1060,7 +1061,6 @@ body.dark .lumora-auth-footer,
   border-top: 1px solid var(--border);
 }
 
-/* Remove unnecessary duplicate layout behavior */
 .sidebar-footer {
   display: block;
 }
@@ -1069,22 +1069,26 @@ body.dark .lumora-auth-footer,
   display: block;
 }
 
-/* Main logout button */
+/* Main logout button — now has its own icon chip so the
+   arrow never sits flush against the text, plus a visible
+   default border/background so it reads as a real button
+   (matching the weight of .new-chat-button) instead of
+   floating bare text. */
 
 .sidebar-logout,
 .logout-button {
   position: relative;
   width: 100%;
-  min-height: 42px;
-  padding: 7px 9px;
+  min-height: 44px;
+  padding: 7px 10px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 11px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
   font-weight: 600;
   text-align: left;
   transition:
@@ -1094,12 +1098,30 @@ body.dark .lumora-auth-footer,
     transform 0.18s ease;
 }
 
-/* Icon */
+/* Dedicated icon chip so the icon always has its own box,
+   consistent spacing, and never touches the label text. */
+
+.sidebar-logout-icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+/* Any icon svg — chip-wrapped or bare — stays a consistent size */
 
 .sidebar-logout svg,
-.logout-button svg {
-  width: 17px;
-  height: 17px;
+.logout-button svg,
+.sidebar-logout-icon svg {
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
 }
 
@@ -1117,7 +1139,7 @@ body.dark .lumora-auth-footer,
 .sidebar-logout-text strong {
   display: block;
   color: inherit;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.3;
   font-weight: 600;
 }
@@ -1126,7 +1148,7 @@ body.dark .lumora-auth-footer,
   display: block;
   margin: 0;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1.3;
   font-weight: 400;
 }
@@ -1144,6 +1166,12 @@ body.dark .lumora-auth-footer,
 .logout-button:hover {
   border-color: #fecaca;
   background: #fff7f7;
+  color: #dc2626;
+}
+
+.sidebar-logout:hover .sidebar-logout-icon,
+.logout-button:hover .sidebar-logout-icon {
+  background: #fee2e2;
   color: #dc2626;
 }
 
@@ -1170,10 +1198,26 @@ body.dark .lumora-auth-footer,
 
 /* Dark logout */
 
+.app.dark .sidebar-logout,
+.app.dark .logout-button {
+  background: #27272a;
+  border-color: #3f3f46;
+}
+
+.app.dark .sidebar-logout-icon {
+  background: #202023;
+}
+
 .app.dark .sidebar-logout:hover,
 .app.dark .logout-button:hover {
   border-color: #7f1d1d;
   background: #2a1717;
+  color: #f87171;
+}
+
+.app.dark .sidebar-logout:hover .sidebar-logout-icon,
+.app.dark .logout-button:hover .sidebar-logout-icon {
+  background: #3f1d1d;
   color: #f87171;
 }
 
@@ -2121,7 +2165,7 @@ body.dark .lumora-auth-footer,
 
   .sidebar-logout,
   .logout-button {
-    min-height: 40px;
+    min-height: 42px;
   }
 }
 
