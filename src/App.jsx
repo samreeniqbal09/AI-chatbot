@@ -1,6 +1,7 @@
 import { useAuth } from "./lib/AuthContext"
 import AuthPage from "./components/AuthPage"
 import ResetPasswordPage from "./components/ResetPasswordPage"
+import LandingPage from "./components/LandingPage"
 
 import {
   useCallback,
@@ -34,6 +35,15 @@ function App() {
   } = useAuth()
 
   const [isRecovery, setIsRecovery] = useState(false)
+
+  /*
+   * SHOW AUTH PAGE
+   *
+   * Landing page is shown first.
+   * Clicking Get Started / Sign In
+   * changes this to the authentication page.
+   */
+  const [showAuth, setShowAuth] = useState(false)
 
   /*
    * PASSWORD RECOVERY
@@ -83,22 +93,48 @@ function App() {
 
   /*
    * PASSWORD RESET
+   *
+   * Recovery must always take priority.
    */
   if (isRecovery) {
     return <ResetPasswordPage />
   }
 
   /*
-   * LOGIN / SIGN UP
+   * LOGGED-IN USER
+   *
+   * Skip landing/auth and go directly
+   * to the chatbot.
    */
-  if (!user) {
-    return <AuthPage />
+  if (user) {
+    return <ChatApp />
   }
 
   /*
-   * CHAT APP
+   * LANDING PAGE
+   *
+   * This is the first page visitors see.
    */
-  return <ChatApp />
+  if (!showAuth) {
+    return (
+      <LandingPage
+        onGetStarted={() => {
+          setShowAuth(true)
+        }}
+      />
+    )
+  }
+
+  /*
+   * LOGIN / SIGN UP
+   */
+  return (
+    <AuthPage
+      onBack={() => {
+        setShowAuth(false)
+      }}
+    />
+  )
 }
 
 function ChatApp() {
@@ -116,6 +152,7 @@ function ChatApp() {
 
   const [limitReached, setLimitReached] = useState(false)
   const [retryMinutes, setRetryMinutes] = useState(0)
+
   const [remainingMessages, setRemainingMessages] =
     useState(MESSAGE_LIMIT)
 
@@ -231,8 +268,12 @@ function ChatApp() {
       setRetryMinutes((prev) => {
         if (prev <= 1) {
           clearInterval(timer)
+
           setLimitReached(false)
-          setRemainingMessages(MESSAGE_LIMIT)
+          setRemainingMessages(
+            MESSAGE_LIMIT
+          )
+
           return 0
         }
 
@@ -269,7 +310,9 @@ function ChatApp() {
 
       setLimitReached(false)
       setRetryMinutes(0)
-      setRemainingMessages(MESSAGE_LIMIT)
+      setRemainingMessages(
+        MESSAGE_LIMIT
+      )
     } catch (error) {
       console.error(
         "Logout error:",
@@ -865,10 +908,7 @@ function ChatApp() {
       )
 
       /*
-       * Replace temporary
-       * user message with
-       * saved conversation state
-       * and show AI response.
+       * Show AI response.
        */
       setMessages((prev) => [
         ...prev,
