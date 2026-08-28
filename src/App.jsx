@@ -25,7 +25,7 @@ import QuickPrompts from "./components/QuickPrompts"
 import supabase from "./lib/supabase"
 
 const MOBILE_BREAKPOINT = 900
-const MESSAGE_LIMIT = 20
+const MESSAGE_LIMIT = 100
 
 function App() {
   const {
@@ -82,7 +82,7 @@ function App() {
   }
 
   /*
-   * PASSWORD RESET PAGE
+   * PASSWORD RESET
    */
   if (isRecovery) {
     return <ResetPasswordPage />
@@ -116,9 +116,14 @@ function ChatApp() {
 
   const [limitReached, setLimitReached] = useState(false)
   const [retryMinutes, setRetryMinutes] = useState(0)
+  const [remainingMessages, setRemainingMessages] =
+    useState(MESSAGE_LIMIT)
 
   const messagesEndRef = useRef(null)
 
+  /*
+   * DARK MODE
+   */
   const [darkMode, setDarkMode] = useState(() => {
     try {
       return (
@@ -131,9 +136,6 @@ function ChatApp() {
     }
   })
 
-  /*
-   * DARK MODE
-   */
   useEffect(() => {
     document.documentElement.classList.toggle(
       "dark",
@@ -220,7 +222,7 @@ function ChatApp() {
   }, [])
 
   /*
-   * RATE LIMIT RESET TIMER
+   * RATE LIMIT COUNTDOWN
    */
   useEffect(() => {
     if (!limitReached) return
@@ -230,6 +232,7 @@ function ChatApp() {
         if (prev <= 1) {
           clearInterval(timer)
           setLimitReached(false)
+          setRemainingMessages(MESSAGE_LIMIT)
           return 0
         }
 
@@ -260,18 +263,13 @@ function ChatApp() {
         return
       }
 
-      /*
-       * Clear local chat state
-       */
       setMessages([])
       setChats([])
       setActiveChat(null)
 
-      /*
-       * Clear rate-limit state
-       */
       setLimitReached(false)
       setRetryMinutes(0)
+      setRemainingMessages(MESSAGE_LIMIT)
     } catch (error) {
       console.error(
         "Logout error:",
@@ -649,9 +647,6 @@ function ChatApp() {
 
   /*
    * BACKEND
-   *
-   * Backend checks and increments
-   * the message rate limit.
    */
   const askBackend = async (
     question,
@@ -708,14 +703,10 @@ function ChatApp() {
           responseText
         )
     } catch {
-      if (!response.ok) {
-        throw new Error(
-          `API error ${response.status}: ${responseText}`
-        )
-      }
-
       throw new Error(
-        "API returned invalid JSON."
+        response.ok
+          ? "API returned invalid JSON."
+          : `API error ${response.status}: ${responseText}`
       )
     }
 
@@ -723,7 +714,8 @@ function ChatApp() {
      * RATE LIMIT
      */
     if (
-      response.status === 429
+      response.status === 429 ||
+      data?.rate_limited === true
     ) {
       const minutes =
         Number(
@@ -732,6 +724,7 @@ function ChatApp() {
 
       setRetryMinutes(minutes)
       setLimitReached(true)
+      setRemainingMessages(0)
 
       const limitError =
         new Error(
@@ -744,12 +737,29 @@ function ChatApp() {
       throw limitError
     }
 
+    /*
+     * OTHER API ERROR
+     */
     if (!response.ok) {
       throw new Error(
         data?.error ||
           data?.message ||
-          data?.answer ||
           `API error ${response.status}`
+      )
+    }
+
+    /*
+     * UPDATE REMAINING COUNT
+     */
+    if (
+      typeof data?.remaining ===
+      "number"
+    ) {
+      setRemainingMessages(
+        Math.max(
+          0,
+          data.remaining
+        )
       )
     }
 
@@ -855,7 +865,10 @@ function ChatApp() {
       )
 
       /*
-       * Show AI response.
+       * Replace temporary
+       * user message with
+       * saved conversation state
+       * and show AI response.
        */
       setMessages((prev) => [
         ...prev,
@@ -881,6 +894,9 @@ function ChatApp() {
         assistantImage
       )
 
+      /*
+       * Refresh sidebar.
+       */
       await loadChats()
     } catch (error) {
       console.error(
@@ -909,6 +925,33 @@ function ChatApp() {
             content:
               error.message ||
               `You've reached your ${MESSAGE_LIMIT} message limit. Please try again later.`,
+            isError:
+              true,
+          },
+        ])
+
+        return
+      }
+
+      /*
+       * AUTH ERROR
+       */
+      if (
+        error?.message
+          ?.toLowerCase()
+          .includes(
+            "session has expired"
+          )
+      ) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id:
+              `auth-error-${Date.now()}`,
+            role:
+              "assistant",
+            content:
+              "Your login session has expired. Please sign in again.",
             isError:
               true,
           },
@@ -968,9 +1011,6 @@ function ChatApp() {
           renameChat
         }
 
-        /*
-         * LOGOUT CONNECTION
-         */
         onLogout={
           handleLogout
         }
@@ -1147,14 +1187,14 @@ function ChatApp() {
                   You've reached your
                   message limit of{" "}
                   {MESSAGE_LIMIT}{" "}
-                  messages per
-                  hour.
+                  messages per hour.
                   <br />
                   Please try again in{" "}
                   <strong>
                     {retryMinutes}{" "}
                     minute
-                    {retryMinutes !== 1
+                    {retryMinutes !==
+                    1
                       ? "s"
                       : ""}
                   </strong>

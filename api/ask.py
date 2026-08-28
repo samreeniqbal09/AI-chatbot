@@ -13,7 +13,9 @@ from openai import OpenAI
 
 MAX_REQUEST_SIZE = 8 * 1024 * 1024
 MAX_QUESTION_LENGTH = 12000
-MESSAGE_LIMIT = 100
+
+# Maximum messages allowed per user in one hour
+MESSAGE_LIMIT = 20
 
 
 # =========================================================
@@ -113,15 +115,20 @@ class handler(BaseHTTPRequestHandler):
             if not rate_result.get("allowed", False):
                 retry_minutes = max(
                     1,
-                    int(rate_result.get("retry_after_minutes", 1))
+                    int(
+                        rate_result.get(
+                            "retry_after_minutes",
+                            1
+                        )
+                    )
                 )
 
                 self.send_json(
                     {
                         "error": (
                             "You've reached your message limit. "
-                            f"Please try again in {retry_minutes} "
-                            "minutes."
+                            f"Please try again in "
+                            f"{retry_minutes} minutes."
                         ),
                         "rate_limited": True,
                         "retry_after_minutes": retry_minutes,
@@ -138,7 +145,10 @@ class handler(BaseHTTPRequestHandler):
 
             try:
                 content_length = int(
-                    self.headers.get("Content-Length", "0")
+                    self.headers.get(
+                        "Content-Length",
+                        "0"
+                    )
                 )
             except ValueError:
                 content_length = 0
@@ -166,7 +176,9 @@ class handler(BaseHTTPRequestHandler):
             # READ BODY
             # -------------------------------------------------
 
-            body = self.rfile.read(content_length)
+            body = self.rfile.read(
+                content_length
+            )
 
             if not body:
                 self.send_json(
@@ -222,6 +234,7 @@ class handler(BaseHTTPRequestHandler):
             image = data.get("image")
 
             if image is not None:
+
                 if not isinstance(image, str):
                     self.send_json(
                         {"error": "Invalid image data."},
@@ -229,7 +242,9 @@ class handler(BaseHTTPRequestHandler):
                     )
                     return
 
-                if not image.startswith("data:image/"):
+                if not image.startswith(
+                    "data:image/"
+                ):
                     self.send_json(
                         {"error": "Invalid image format."},
                         400
@@ -268,13 +283,21 @@ class handler(BaseHTTPRequestHandler):
             # OPENROUTER KEY
             # -------------------------------------------------
 
-            api_key = os.environ.get("OPENROUTER_API_KEY")
+            api_key = os.environ.get(
+                "OPENROUTER_API_KEY"
+            )
 
             if not api_key:
-                print("API ERROR: OPENROUTER_API_KEY missing")
+                print(
+                    "API ERROR: "
+                    "OPENROUTER_API_KEY missing"
+                )
 
                 self.send_json(
-                    {"error": "AI service is not configured."},
+                    {
+                        "error":
+                            "AI service is not configured."
+                    },
                     500
                 )
                 return
@@ -308,18 +331,22 @@ class handler(BaseHTTPRequestHandler):
             # -------------------------------------------------
 
             client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
+                base_url=(
+                    "https://openrouter.ai/api/v1"
+                ),
                 api_key=api_key,
             )
 
-            response = client.chat.completions.create(
-                model="qwen/qwen3.7-flash",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": content,
-                    }
-                ],
+            response = (
+                client.chat.completions.create(
+                    model="qwen/qwen3.7-flash",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": content,
+                        }
+                    ],
+                )
             )
 
             # -------------------------------------------------
@@ -335,11 +362,14 @@ class handler(BaseHTTPRequestHandler):
                 )
 
             answer = str(
-                response.choices[0].message.content or ""
+                response.choices[0]
+                .message.content or ""
             ).strip()
 
             if not answer:
-                answer = "I couldn't generate a response."
+                answer = (
+                    "I couldn't generate a response."
+                )
 
             # -------------------------------------------------
             # SUCCESS
@@ -349,7 +379,9 @@ class handler(BaseHTTPRequestHandler):
                 {
                     "answer": answer,
                     "image": image or None,
-                    "remaining": rate_result.get("remaining"),
+                    "remaining": rate_result.get(
+                        "remaining"
+                    ),
                 }
             )
 
@@ -360,7 +392,10 @@ class handler(BaseHTTPRequestHandler):
             )
 
         except Exception as error:
-            print("API ERROR:", repr(error))
+            print(
+                "API ERROR:",
+                repr(error)
+            )
 
             self.send_json(
                 {
@@ -386,13 +421,23 @@ class handler(BaseHTTPRequestHandler):
     # =====================================================
 
     def verify_user(self, access_token):
-        supabase_url = os.environ.get("VITE_SUPABASE_URL")
+
+        supabase_url = os.environ.get(
+            "VITE_SUPABASE_URL"
+        )
+
         supabase_anon_key = os.environ.get(
             "VITE_SUPABASE_ANON_KEY"
         )
 
-        if not supabase_url or not supabase_anon_key:
-            print("AUTH ERROR: Supabase environment variables missing")
+        if (
+            not supabase_url
+            or not supabase_anon_key
+        ):
+            print(
+                "AUTH ERROR: "
+                "Supabase environment variables missing"
+            )
             return None
 
         try:
@@ -405,8 +450,10 @@ class handler(BaseHTTPRequestHandler):
                 url,
                 method="GET",
                 headers={
-                    "apikey": supabase_anon_key,
-                    "Authorization": f"Bearer {access_token}",
+                    "apikey":
+                        supabase_anon_key,
+                    "Authorization":
+                        f"Bearer {access_token}",
                 },
             )
 
@@ -418,11 +465,18 @@ class handler(BaseHTTPRequestHandler):
                 if response.status != 200:
                     return None
 
-                user = json.loads(response.read())
+                user = json.loads(
+                    response.read()
+                )
+
                 return user.get("id")
 
         except Exception as error:
-            print("AUTH ERROR:", repr(error))
+            print(
+                "AUTH ERROR:",
+                repr(error)
+            )
+
             return None
 
     # =====================================================
@@ -434,16 +488,27 @@ class handler(BaseHTTPRequestHandler):
         access_token,
         user_id
     ):
-        supabase_url = os.environ.get("VITE_SUPABASE_URL")
+
+        supabase_url = os.environ.get(
+            "VITE_SUPABASE_URL"
+        )
+
         supabase_anon_key = os.environ.get(
             "VITE_SUPABASE_ANON_KEY"
         )
 
-        if not supabase_url or not supabase_anon_key:
-            print("RATE LIMIT ERROR: Supabase environment variables missing")
+        if (
+            not supabase_url
+            or not supabase_anon_key
+        ):
+            print(
+                "RATE LIMIT ERROR: "
+                "Supabase environment variables missing"
+            )
             return None
 
         try:
+
             url = (
                 supabase_url.rstrip("/")
                 + "/rest/v1/rpc/check_message_limit"
@@ -461,9 +526,12 @@ class handler(BaseHTTPRequestHandler):
                 data=payload,
                 method="POST",
                 headers={
-                    "apikey": supabase_anon_key,
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json",
+                    "apikey":
+                        supabase_anon_key,
+                    "Authorization":
+                        f"Bearer {access_token}",
+                    "Content-Type":
+                        "application/json",
                 },
             )
 
@@ -475,17 +543,25 @@ class handler(BaseHTTPRequestHandler):
                 if response.status != 200:
                     print(
                         "RATE LIMIT ERROR: "
-                        f"Supabase returned {response.status}"
+                        f"Supabase returned "
+                        f"{response.status}"
                     )
+
                     return None
 
-                return json.loads(response.read())
+                return json.loads(
+                    response.read()
+                )
 
         except urllib.error.HTTPError as error:
+
             try:
-                error_body = error.read().decode(
-                    "utf-8",
-                    errors="replace"
+                error_body = (
+                    error.read()
+                    .decode(
+                        "utf-8",
+                        errors="replace"
+                    )
                 )
             except Exception:
                 error_body = ""
@@ -499,7 +575,12 @@ class handler(BaseHTTPRequestHandler):
             return None
 
         except Exception as error:
-            print("RATE LIMIT ERROR:", repr(error))
+
+            print(
+                "RATE LIMIT ERROR:",
+                repr(error)
+            )
+
             return None
 
     # =====================================================
@@ -507,6 +588,7 @@ class handler(BaseHTTPRequestHandler):
     # =====================================================
 
     def send_cors_headers(self):
+
         allowed_origin = os.environ.get(
             "ALLOWED_ORIGIN",
             "*"
@@ -542,12 +624,15 @@ class handler(BaseHTTPRequestHandler):
         status_code=200,
         retry_after=None
     ):
+
         response = json.dumps(
             data,
             ensure_ascii=False
         ).encode("utf-8")
 
-        self.send_response(status_code)
+        self.send_response(
+            status_code
+        )
 
         self.send_header(
             "Content-Type",
@@ -571,5 +656,7 @@ class handler(BaseHTTPRequestHandler):
             )
 
         self.send_cors_headers()
+
         self.end_headers()
+
         self.wfile.write(response)
