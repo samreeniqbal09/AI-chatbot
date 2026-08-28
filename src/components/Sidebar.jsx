@@ -80,9 +80,7 @@ function Sidebar({
 
   /* REMOVE DELETED CHATS FROM PINNED */
   useEffect(() => {
-    const ids = new Set(
-      chats.map((chat) => chat.id)
-    )
+    const ids = new Set(chats.map((chat) => chat.id))
 
     setPinnedChats((prev) =>
       prev.filter((id) => ids.has(id))
@@ -104,10 +102,7 @@ function Sidebar({
     window.addEventListener("keydown", handleEscape)
 
     return () => {
-      window.removeEventListener(
-        "keydown",
-        handleEscape
-      )
+      window.removeEventListener("keydown", handleEscape)
     }
   }, [
     openMenu,
@@ -269,12 +264,7 @@ function Sidebar({
     )
   }
 
-  /*
-   * LOGOUT
-   *
-   * Uses the logout function supplied
-   * by App.jsx.
-   */
+  /* LOGOUT */
   const handleLogout = async () => {
     if (loggingOut) return
 
@@ -302,15 +292,9 @@ function Sidebar({
         {isMobile && sidebarOpen && (
           <motion.div
             className="sidebar-overlay"
-            initial={{
-              opacity: 0,
-            }}
-            animate={{
-              opacity: 1,
-            }}
-            exit={{
-              opacity: 0,
-            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={closeSidebar}
           />
         )}
@@ -570,30 +554,50 @@ function Sidebar({
         {/* LOGOUT */}
 
         <div className="sidebar-footer">
-          <button
-            className="sidebar-logout-button"
+          <motion.button
+            className={`sidebar-logout-button ${
+              darkMode
+                ? "sidebar-logout-dark"
+                : ""
+            }`}
             type="button"
             onClick={handleLogout}
             disabled={
               loggingOut || !onLogout
             }
             aria-label="Log out of Lumora AI"
+            whileHover={
+              !loggingOut
+                ? {
+                    y: -1,
+                  }
+                : undefined
+            }
+            whileTap={
+              !loggingOut
+                ? {
+                    scale: 0.98,
+                  }
+                : undefined
+            }
           >
-            {loggingOut ? (
-              <Loader2
-                size={16}
-                className="animate-spin"
-              />
-            ) : (
-              <LogOut size={16} />
-            )}
+            <span className="logout-icon-wrapper">
+              {loggingOut ? (
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+              ) : (
+                <LogOut size={16} />
+              )}
+            </span>
 
-            <span>
+            <span className="logout-text">
               {loggingOut
                 ? "Logging out..."
                 : "Log out"}
             </span>
-          </button>
+          </motion.button>
         </div>
       </motion.aside>
     </>
