@@ -12,8 +12,9 @@ import {
   ChevronDown,
   X,
   LogOut,
-  Loader2,
 } from "lucide-react"
+
+import { useAuth } from "../lib/AuthContext"
 
 function Sidebar({
   chats = [],
@@ -22,12 +23,12 @@ function Sidebar({
   onSelectChat,
   onDeleteChat,
   onRenameChat,
-  onLogout,
-  loggingOut = false,
   sidebarOpen,
   setSidebarOpen,
   darkMode,
 }) {
+  const { signOut } = useAuth()
+
   const [search, setSearch] = useState("")
   const [showRecent, setShowRecent] = useState(true)
   const [openMenu, setOpenMenu] = useState(null)
@@ -43,15 +44,12 @@ function Sidebar({
   })
 
   const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" &&
-      window.innerWidth < 900
+    typeof window !== "undefined" && window.innerWidth < 900
   )
 
-  /* MOBILE RESPONSIVE */
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 900
-
       setIsMobile(mobile)
 
       if (!mobile) {
@@ -60,7 +58,6 @@ function Sidebar({
     }
 
     handleResize()
-
     window.addEventListener("resize", handleResize)
 
     return () => {
@@ -68,7 +65,6 @@ function Sidebar({
     }
   }, [setSidebarOpen])
 
-  /* SAVE PINNED CHATS */
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -78,7 +74,6 @@ function Sidebar({
     } catch {}
   }, [pinnedChats])
 
-  /* REMOVE DELETED CHATS FROM PINNED */
   useEffect(() => {
     const ids = new Set(chats.map((chat) => chat.id))
 
@@ -87,7 +82,6 @@ function Sidebar({
     )
   }, [chats])
 
-  /* ESCAPE KEY */
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key !== "Escape") return
@@ -111,7 +105,6 @@ function Sidebar({
     setSidebarOpen,
   ])
 
-  /* CLOSE CHAT MENU OUTSIDE */
   useEffect(() => {
     if (openMenu === null) return
 
@@ -139,7 +132,6 @@ function Sidebar({
     }
   }, [openMenu])
 
-  /* PREVENT BODY SCROLL ON MOBILE */
   useEffect(() => {
     document.body.style.overflow =
       isMobile && sidebarOpen ? "hidden" : ""
@@ -149,7 +141,6 @@ function Sidebar({
     }
   }, [isMobile, sidebarOpen])
 
-  /* SEARCH */
   const filteredChats = useMemo(() => {
     const query = search.trim().toLowerCase()
 
@@ -170,7 +161,6 @@ function Sidebar({
     (chat) => !pinnedChats.includes(chat.id)
   )
 
-  /* CLOSE SIDEBAR */
   const closeSidebar = () => {
     setOpenMenu(null)
 
@@ -179,12 +169,8 @@ function Sidebar({
     }
   }
 
-  /* NEW CHAT */
   const handleNewChat = () => {
-    if (loggingOut) return
-
     setOpenMenu(null)
-
     onNewChat?.()
 
     if (isMobile) {
@@ -192,12 +178,8 @@ function Sidebar({
     }
   }
 
-  /* SELECT CHAT */
   const handleSelectChat = (chatId) => {
-    if (loggingOut) return
-
     setOpenMenu(null)
-
     onSelectChat?.(chatId)
 
     if (isMobile) {
@@ -205,10 +187,7 @@ function Sidebar({
     }
   }
 
-  /* PIN / UNPIN */
   const togglePin = (chatId) => {
-    if (loggingOut) return
-
     setPinnedChats((prev) =>
       prev.includes(chatId)
         ? prev.filter((id) => id !== chatId)
@@ -218,10 +197,7 @@ function Sidebar({
     setOpenMenu(null)
   }
 
-  /* RENAME */
   const handleRename = (chat) => {
-    if (loggingOut) return
-
     setOpenMenu(null)
 
     const title = window
@@ -239,10 +215,7 @@ function Sidebar({
     }
   }
 
-  /* DELETE */
   const handleDelete = (chatId) => {
-    if (loggingOut) return
-
     setOpenMenu(null)
 
     onDeleteChat?.(chatId)
@@ -252,33 +225,31 @@ function Sidebar({
     )
   }
 
-  /* ADD TO PROJECT */
   const handleAddToProject = (chat) => {
-    if (loggingOut) return
-
     setOpenMenu(null)
 
+    // Project functionality can be connected later.
     console.log(
       "Add chat to project:",
       chat.id
     )
   }
 
-  /* LOGOUT */
   const handleLogout = async () => {
-    if (loggingOut) return
-
     setOpenMenu(null)
 
     try {
-      await onLogout?.()
+      const { error } = await signOut()
 
-      if (isMobile) {
-        setSidebarOpen(false)
+      if (error) {
+        console.error(
+          "Logout error:",
+          error
+        )
       }
     } catch (error) {
       console.error(
-        "Sidebar logout error:",
+        "Logout error:",
         error
       )
     }
@@ -286,8 +257,6 @@ function Sidebar({
 
   return (
     <>
-      {/* MOBILE OVERLAY */}
-
       <AnimatePresence>
         {isMobile && sidebarOpen && (
           <motion.div
@@ -299,8 +268,6 @@ function Sidebar({
           />
         )}
       </AnimatePresence>
-
-      {/* SIDEBAR */}
 
       <motion.aside
         className={`sidebar ${
@@ -332,9 +299,14 @@ function Sidebar({
                 scale: 0.96,
               }}
             >
-              <span className="lumora-logo-mark">
-                ✦
-              </span>
+              {/* Real logo mark — replaces the old "✦" text placeholder.
+                  File lives at /public/lumora-icon.svg, so it's referenced
+                  from the root as "/lumora-icon.svg". */}
+              <img
+                src="/lumora-icon.svg"
+                alt="Lumora AI"
+                className="brand-icon-img"
+              />
             </motion.div>
 
             <div className="brand-text">
@@ -376,7 +348,9 @@ function Sidebar({
           {search && (
             <button
               type="button"
-              onClick={() => setSearch("")}
+              onClick={() =>
+                setSearch("")
+              }
               aria-label="Clear search"
             >
               <X size={14} />
@@ -390,7 +364,6 @@ function Sidebar({
           className="new-chat-button"
           type="button"
           onClick={handleNewChat}
-          disabled={loggingOut}
           whileHover={{
             scale: 1.01,
           }}
@@ -409,19 +382,27 @@ function Sidebar({
             className="section-heading"
             type="button"
             onClick={() =>
-              setShowRecent((prev) => !prev)
+              setShowRecent(
+                (prev) => !prev
+              )
             }
             aria-expanded={showRecent}
           >
-            <span>Recent chats</span>
+            <span>
+              Recent chats
+            </span>
 
             <motion.span
               className="section-chevron"
               animate={{
-                rotate: showRecent ? 0 : -90,
+                rotate: showRecent
+                  ? 0
+                  : -90,
               }}
             >
-              <ChevronDown size={15} />
+              <ChevronDown
+                size={15}
+              />
             </motion.span>
           </button>
 
@@ -453,35 +434,40 @@ function Sidebar({
                       Pinned
                     </div>
 
-                    {pinned.map((chat) => (
-                      <ChatItem
-                        key={chat.id}
-                        chat={chat}
-                        activeChat={activeChat}
-                        pinned
-                        menuOpen={
-                          openMenu === chat.id
-                        }
-                        setOpenMenu={
-                          setOpenMenu
-                        }
-                        onSelectChat={
-                          handleSelectChat
-                        }
-                        onTogglePin={
-                          togglePin
-                        }
-                        onRename={
-                          handleRename
-                        }
-                        onAddToProject={
-                          handleAddToProject
-                        }
-                        onDelete={
-                          handleDelete
-                        }
-                      />
-                    ))}
+                    {pinned.map(
+                      (chat) => (
+                        <ChatItem
+                          key={chat.id}
+                          chat={chat}
+                          activeChat={
+                            activeChat
+                          }
+                          pinned
+                          menuOpen={
+                            openMenu ===
+                            chat.id
+                          }
+                          setOpenMenu={
+                            setOpenMenu
+                          }
+                          onSelectChat={
+                            handleSelectChat
+                          }
+                          onTogglePin={
+                            togglePin
+                          }
+                          onRename={
+                            handleRename
+                          }
+                          onAddToProject={
+                            handleAddToProject
+                          }
+                          onDelete={
+                            handleDelete
+                          }
+                        />
+                      )
+                    )}
                   </>
                 )}
 
@@ -495,34 +481,39 @@ function Sidebar({
                       </div>
                     )}
 
-                    {recent.map((chat) => (
-                      <ChatItem
-                        key={chat.id}
-                        chat={chat}
-                        activeChat={activeChat}
-                        menuOpen={
-                          openMenu === chat.id
-                        }
-                        setOpenMenu={
-                          setOpenMenu
-                        }
-                        onSelectChat={
-                          handleSelectChat
-                        }
-                        onTogglePin={
-                          togglePin
-                        }
-                        onRename={
-                          handleRename
-                        }
-                        onAddToProject={
-                          handleAddToProject
-                        }
-                        onDelete={
-                          handleDelete
-                        }
-                      />
-                    ))}
+                    {recent.map(
+                      (chat) => (
+                        <ChatItem
+                          key={chat.id}
+                          chat={chat}
+                          activeChat={
+                            activeChat
+                          }
+                          menuOpen={
+                            openMenu ===
+                            chat.id
+                          }
+                          setOpenMenu={
+                            setOpenMenu
+                          }
+                          onSelectChat={
+                            handleSelectChat
+                          }
+                          onTogglePin={
+                            togglePin
+                          }
+                          onRename={
+                            handleRename
+                          }
+                          onAddToProject={
+                            handleAddToProject
+                          }
+                          onDelete={
+                            handleDelete
+                          }
+                        />
+                      )
+                    )}
                   </>
                 )}
 
@@ -530,7 +521,9 @@ function Sidebar({
 
                 {!filteredChats.length && (
                   <div className="empty-history">
-                    <MessageSquare size={18} />
+                    <MessageSquare
+                      size={18}
+                    />
 
                     <p>
                       {search
@@ -554,57 +547,21 @@ function Sidebar({
         {/* LOGOUT */}
 
         <div className="sidebar-footer">
-          <motion.button
-            className={`sidebar-logout-button ${
-              darkMode
-                ? "sidebar-logout-dark"
-                : ""
-            }`}
+          <button
+            className="sidebar-logout-button"
             type="button"
             onClick={handleLogout}
-            disabled={
-              loggingOut || !onLogout
-            }
-            aria-label="Log out of Lumora AI"
-            whileHover={
-              !loggingOut
-                ? {
-                    y: -1,
-                  }
-                : undefined
-            }
-            whileTap={
-              !loggingOut
-                ? {
-                    scale: 0.98,
-                  }
-                : undefined
-            }
           >
-            <span className="logout-icon-wrapper">
-              {loggingOut ? (
-                <Loader2
-                  size={16}
-                  className="animate-spin"
-                />
-              ) : (
-                <LogOut size={16} />
-              )}
+            <LogOut size={16} />
+            <span>
+              Log out
             </span>
-
-            <span className="logout-text">
-              {loggingOut
-                ? "Logging out..."
-                : "Log out"}
-            </span>
-          </motion.button>
+          </button>
         </div>
       </motion.aside>
     </>
   )
 }
-
-/* CHAT ITEM */
 
 function ChatItem({
   chat,
@@ -634,9 +591,7 @@ function ChatItem({
       }
       whileHover={
         !menuOpen
-          ? {
-              x: 2,
-            }
+          ? { x: 2 }
           : undefined
       }
     >
@@ -644,12 +599,15 @@ function ChatItem({
         {pinned ? (
           <Pin size={14} />
         ) : (
-          <MessageSquare size={15} />
+          <MessageSquare
+            size={15}
+          />
         )}
       </div>
 
       <span className="chat-title">
-        {chat.title || "New Chat"}
+        {chat.title ||
+          "New Chat"}
       </span>
 
       <button
@@ -672,7 +630,9 @@ function ChatItem({
         aria-expanded={menuOpen}
         title="Chat options"
       >
-        <MoreHorizontal size={18} />
+        <MoreHorizontal
+          size={18}
+        />
       </button>
 
       <AnimatePresence>
@@ -701,10 +661,14 @@ function ChatItem({
               event.stopPropagation()
             }
           >
+            {/* PIN */}
+
             <button
               type="button"
               onClick={() =>
-                onTogglePin(chat.id)
+                onTogglePin(
+                  chat.id
+                )
               }
             >
               <Pin size={14} />
@@ -716,24 +680,36 @@ function ChatItem({
               </span>
             </button>
 
+            {/* RENAME */}
+
             <button
               type="button"
               onClick={() =>
                 onRename(chat)
               }
             >
-              <Pencil size={14} />
+              <Pencil
+                size={14}
+              />
 
-              <span>Rename</span>
+              <span>
+                Rename
+              </span>
             </button>
+
+            {/* ADD TO PROJECT */}
 
             <button
               type="button"
               onClick={() =>
-                onAddToProject(chat)
+                onAddToProject(
+                  chat
+                )
               }
             >
-              <FolderPlus size={14} />
+              <FolderPlus
+                size={14}
+              />
 
               <span>
                 Add to project
@@ -742,16 +718,24 @@ function ChatItem({
 
             <div className="menu-divider" />
 
+            {/* DELETE */}
+
             <button
               className="delete-option"
               type="button"
               onClick={() =>
-                onDelete(chat.id)
+                onDelete(
+                  chat.id
+                )
               }
             >
-              <Trash2 size={14} />
+              <Trash2
+                size={14}
+              />
 
-              <span>Delete</span>
+              <span>
+                Delete
+              </span>
             </button>
           </motion.div>
         )}

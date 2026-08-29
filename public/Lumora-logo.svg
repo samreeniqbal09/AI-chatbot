@@ -1,14 +1,23 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 100" fill="none">
   <defs>
-    <linearGradient id="lumora" x1="10" y1="10" x2="90" y2="90">
+    <linearGradient id="lumoraGradient" x1="10" y1="10" x2="90" y2="90">
       <stop offset="0%" stop-color="#A78BFA"/>
       <stop offset="100%" stop-color="#7C3AED"/>
     </linearGradient>
   </defs>
 
-  <rect width="100" height="100" rx="26" fill="url(#lumora)"/>
+  <!-- Lumora AI Icon -->
 
-  <!-- Main Lumora Spark -->
+<rect
+ x="5"
+ y="5"
+ width="90"
+ height="90"
+ rx="24"
+ fill="url(#lumoraGradient)"
+/>
+
+  <!-- Main AI Spark -->
 
 <path
  d="M50 18
@@ -45,4 +54,28 @@
     C73 20 74 16 76 16Z"
  fill="white"
  opacity="0.9"
-/> </svg>
+/>
+
+  <!-- Lumora Wordmark -->
+
+<text
+ x="115"
+ y="63"
+ font-family="Plus Jakarta Sans, Arial, sans-serif"
+ font-size="43"
+ font-weight="700"
+ letter-spacing="-1.5"
+ fill="#18181B">
+Lumora </text>
+
+  <!-- AI -->
+
+<text
+ x="303"
+ y="63"
+ font-family="Plus Jakarta Sans, Arial, sans-serif"
+ font-size="43"
+ font-weight="600"
+ letter-spacing="-1.5"
+ fill="#7C3AED">
+AI </text> </svg>
