@@ -115,7 +115,7 @@ export default function AuthPage({ onBack }) {
         <div className="lumora-auth-brand">
           <div className="lumora-auth-brand-icon">
             <img
-              src="/logo.svg"
+              src="/Lumora-logo.svg"
               alt="Lumora AI"
             />
           </div>

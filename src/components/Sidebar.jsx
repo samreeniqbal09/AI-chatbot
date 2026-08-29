@@ -374,7 +374,7 @@ function Sidebar({
               }}
             >
               <img
-                src="/logo.svg"
+                src="/Lumora-logo.svg"
                 alt="Lumora AI"
                 className="brand-icon-img"
               />

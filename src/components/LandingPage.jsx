@@ -14,7 +14,7 @@ function LandingPage({ onGetStarted }) {
         <a href="#top" className="landing-brand">
           <div className="landing-brand-icon">
             <img
-              src="/logo.svg"
+              src="/Lumora-logo.svg"
               alt="Lumora AI"
             />
           </div>
