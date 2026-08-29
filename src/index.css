@@ -5,24 +5,30 @@
 @tailwind utilities;
 
 /* =========================================================
-GLOBAL
+LUMORA DESIGN SYSTEM
 ========================================================= */
 
 :root {
 --primary: #6366f1;
 --primary-hover: #4f46e5;
+--primary-dark: #4338ca;
 --primary-light: #eef2ff;
 --primary-soft: #f5f3ff;
+
 --bg: #f7f7fb;
 --surface: #ffffff;
 --surface-2: #f4f4f7;
+
 --border: #e5e7eb;
 --border-light: #ededf2;
+
 --text: #18181b;
 --muted: #71717a;
 --muted-light: #a1a1aa;
+
 --danger: #dc2626;
 --success: #16a34a;
+
 --radius: 12px;
 --shadow-sm: 0 2px 8px rgba(24, 24, 27, 0.05);
 --shadow-md: 0 8px 24px rgba(24, 24, 27, 0.07);
@@ -67,6 +73,10 @@ button:disabled {
 cursor: not-allowed;
 }
 
+a {
+color: inherit;
+}
+
 .app {
 min-height: 100vh;
 background: var(--bg);
@@ -82,11 +92,14 @@ DARK MODE
 --bg: #18181b;
 --surface: #202023;
 --surface-2: #2d2d32;
+
 --border: #3f3f46;
 --border-light: #35353b;
+
 --text: #f4f4f5;
 --muted: #a1a1aa;
 --muted-light: #71717a;
+
 --primary-light: #312e81;
 --primary-soft: #27234f;
 }
@@ -157,10 +170,17 @@ height: 42px;
 flex-shrink: 0;
 display: grid;
 place-items: center;
+overflow: hidden;
 border-radius: 12px;
 background: linear-gradient(135deg, #6366f1, #7c3aed);
 color: #fff;
 box-shadow: 0 8px 20px rgba(99, 102, 241, 0.22);
+}
+
+.lumora-auth-brand-icon img {
+width: 100%;
+height: 100%;
+object-fit: cover;
 }
 
 .lumora-auth-brand-name {
@@ -194,10 +214,6 @@ box-shadow:
 0 4px 14px rgba(24, 24, 27, 0.04);
 backdrop-filter: blur(18px);
 -webkit-backdrop-filter: blur(18px);
-transition:
-background 0.25s ease,
-border-color 0.25s ease,
-box-shadow 0.25s ease;
 }
 
 /* =========================================================
@@ -250,10 +266,7 @@ background: transparent;
 color: #777780;
 font-size: 11px;
 font-weight: 600;
-transition:
-background 0.18s ease,
-color 0.18s ease,
-box-shadow 0.18s ease;
+transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .lumora-auth-switch button:hover {
@@ -288,6 +301,13 @@ font-size: 10px;
 font-weight: 600;
 }
 
+.lumora-auth-label-row {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+}
+
 /* =========================================================
 AUTH INPUT
 ========================================================= */
@@ -303,15 +323,11 @@ border: 1px solid #dedee5;
 border-radius: 10px;
 background: #fff;
 color: #9a9aa3;
-transition:
-border-color 0.18s ease,
-box-shadow 0.18s ease,
-background 0.18s ease;
+transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .lumora-auth-input:focus-within {
 border-color: #818cf8;
-background: #fff;
 box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.09);
 }
 
@@ -344,7 +360,7 @@ transition: background-color 9999s ease-in-out 0s;
 }
 
 /* =========================================================
-PASSWORD EYE
+AUTH BUTTONS
 ========================================================= */
 
 .lumora-auth-eye {
@@ -358,14 +374,85 @@ border: 0;
 border-radius: 7px;
 background: transparent;
 color: #9999a3;
-transition:
-background 0.15s ease,
-color 0.15s ease;
 }
 
 .lumora-auth-eye:hover {
 background: #f3f3f6;
 color: #4f46e5;
+}
+
+.lumora-auth-forgot {
+padding: 0;
+border: 0;
+background: transparent;
+color: var(--primary);
+font-size: 11px;
+font-weight: 600;
+}
+
+.lumora-auth-forgot:hover {
+color: var(--primary-hover);
+text-decoration: underline;
+}
+
+.lumora-auth-back {
+display: inline-flex;
+align-items: center;
+gap: 6px;
+padding: 0;
+border: 0;
+background: transparent;
+color: var(--muted);
+font-size: 11px;
+font-weight: 600;
+}
+
+.lumora-auth-back:hover {
+color: var(--primary);
+}
+
+.lumora-auth-forgot-icon {
+width: 46px;
+height: 46px;
+margin: 0 auto 14px;
+display: grid;
+place-items: center;
+border-radius: 13px;
+background: #eef2ff;
+color: var(--primary);
+}
+
+.lumora-auth-submit {
+width: 100%;
+height: 45px;
+margin-top: 1px;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+border: 0;
+border-radius: 10px;
+background: linear-gradient(135deg, #6366f1, #4f46e5);
+color: #fff;
+font-size: 11px;
+font-weight: 600;
+box-shadow: 0 7px 16px rgba(79, 70, 229, 0.18);
+transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.lumora-auth-submit:hover:not(:disabled) {
+background: linear-gradient(135deg, #4f46e5, #4338ca);
+box-shadow: 0 9px 20px rgba(79, 70, 229, 0.25);
+transform: translateY(-1px);
+}
+
+.lumora-auth-submit:active:not(:disabled) {
+transform: translateY(0);
+}
+
+.lumora-auth-submit:disabled {
+opacity: 0.65;
+box-shadow: none;
 }
 
 /* =========================================================
@@ -402,50 +489,6 @@ flex-shrink: 0;
 margin-top: 1px;
 }
 
-/* =========================================================
-AUTH SUBMIT
-========================================================= */
-
-.lumora-auth-submit {
-width: 100%;
-height: 45px;
-margin-top: 1px;
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 8px;
-border: 0;
-border-radius: 10px;
-background: linear-gradient(135deg, #6366f1, #4f46e5);
-color: #fff;
-font-size: 11px;
-font-weight: 600;
-box-shadow: 0 7px 16px rgba(79, 70, 229, 0.18);
-transition:
-transform 0.18s ease,
-box-shadow 0.18s ease,
-background 0.18s ease;
-}
-
-.lumora-auth-submit:hover:not(:disabled) {
-background: linear-gradient(135deg, #4f46e5, #4338ca);
-box-shadow: 0 9px 20px rgba(79, 70, 229, 0.25);
-transform: translateY(-1px);
-}
-
-.lumora-auth-submit:active:not(:disabled) {
-transform: translateY(0);
-}
-
-.lumora-auth-submit:disabled {
-opacity: 0.65;
-box-shadow: none;
-}
-
-/* =========================================================
-AUTH BOTTOM
-========================================================= */
-
 .lumora-auth-bottom {
 margin-top: 23px;
 text-align: center;
@@ -474,58 +517,6 @@ color: #a1a1aa;
 text-align: center;
 font-size: 8px;
 line-height: 1.4;
-}
-
-/* =========================================================
-PASSWORD RESET
-========================================================= */
-
-.lumora-auth-label-row {
-display: flex;
-align-items: center;
-justify-content: space-between;
-gap: 12px;
-}
-
-.lumora-auth-forgot {
-padding: 0;
-border: 0;
-background: transparent;
-color: var(--primary);
-font-size: 11px;
-font-weight: 600;
-}
-
-.lumora-auth-forgot:hover {
-color: var(--primary-hover);
-text-decoration: underline;
-}
-
-.lumora-auth-forgot-icon {
-width: 46px;
-height: 46px;
-margin: 0 auto 14px;
-display: grid;
-place-items: center;
-border-radius: 13px;
-background: #eef2ff;
-color: var(--primary);
-}
-
-.lumora-auth-back {
-display: inline-flex;
-align-items: center;
-gap: 6px;
-padding: 0;
-border: 0;
-background: transparent;
-color: var(--muted);
-font-size: 11px;
-font-weight: 600;
-}
-
-.lumora-auth-back:hover {
-color: var(--primary);
 }
 
 /* =========================================================
@@ -592,18 +583,11 @@ body.dark .lumora-auth-switch button,
 color: #a1a1aa;
 }
 
-html.dark .lumora-auth-switch button:hover,
-body.dark .lumora-auth-switch button:hover,
-.lumora-auth.dark .lumora-auth-switch button:hover {
-color: #c7d2fe;
-}
-
 html.dark .lumora-auth-switch button.selected,
 body.dark .lumora-auth-switch button.selected,
 .lumora-auth.dark .lumora-auth-switch button.selected {
 background: #3f3f46;
 color: #c7d2fe;
-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 html.dark .lumora-auth-field label,
@@ -620,14 +604,6 @@ background: #27272a;
 color: #a1a1aa;
 }
 
-html.dark .lumora-auth-input:focus-within,
-body.dark .lumora-auth-input:focus-within,
-.lumora-auth.dark .lumora-auth-input:focus-within {
-border-color: #818cf8;
-background: #27272a;
-box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
 html.dark .lumora-auth-input input,
 body.dark .lumora-auth-input input,
 .lumora-auth.dark .lumora-auth-input input {
@@ -638,19 +614,6 @@ html.dark .lumora-auth-input input::placeholder,
 body.dark .lumora-auth-input input::placeholder,
 .lumora-auth.dark .lumora-auth-input input::placeholder {
 color: #71717a;
-}
-
-html.dark .lumora-auth-input input:-webkit-autofill,
-html.dark .lumora-auth-input input:-webkit-autofill:hover,
-html.dark .lumora-auth-input input:-webkit-autofill:focus,
-body.dark .lumora-auth-input input:-webkit-autofill,
-body.dark .lumora-auth-input input:-webkit-autofill:hover,
-body.dark .lumora-auth-input input:-webkit-autofill:focus,
-.lumora-auth.dark .lumora-auth-input input:-webkit-autofill,
-.lumora-auth.dark .lumora-auth-input input:-webkit-autofill:hover,
-.lumora-auth.dark .lumora-auth-input input:-webkit-autofill:focus {
--webkit-text-fill-color: #f4f4f5;
--webkit-box-shadow: 0 0 0 1000px #27272a inset;
 }
 
 html.dark .lumora-auth-eye:hover,
@@ -724,10 +687,6 @@ gap: 9px;
 min-width: 0;
 }
 
-/* =========================================================
-SIDEBAR LOGO
-========================================================= */
-
 .brand-icon,
 .header-logo,
 .message-avatar,
@@ -741,10 +700,9 @@ place-items: center;
 width: 38px;
 height: 38px;
 flex-shrink: 0;
-border-radius: var(--radius);
 overflow: hidden;
+border-radius: var(--radius);
 background: transparent;
-color: #fff;
 }
 
 .brand-icon-img {
@@ -782,9 +740,6 @@ border: 1px solid var(--border);
 border-radius: 9px;
 background: var(--surface);
 color: var(--muted);
-transition:
-border-color 0.18s ease,
-box-shadow 0.18s ease;
 }
 
 .sidebar-search:focus-within {
@@ -841,10 +796,7 @@ color: #fff;
 font-size: 12px;
 font-weight: 600;
 box-shadow: 0 5px 14px rgba(79, 70, 229, 0.14);
-transition:
-background 0.2s ease,
-box-shadow 0.2s ease,
-transform 0.2s ease;
+transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .new-chat-button:hover {
@@ -895,10 +847,6 @@ background: #52525b;
 width: 100%;
 overflow: visible;
 }
-
-/* =========================================================
-SECTION HEADING
-========================================================= */
 
 .section-heading {
 width: 100%;
@@ -953,9 +901,7 @@ border-radius: 8px;
 color: var(--muted);
 font-size: 11px;
 cursor: pointer;
-transition:
-background 0.15s ease,
-color 0.15s ease;
+transition: background 0.15s ease, color 0.15s ease;
 }
 
 .chat-item:hover {
@@ -994,7 +940,7 @@ text-overflow: ellipsis;
 }
 
 /* =========================================================
-THREE DOT MENU
+CHAT MENU
 ========================================================= */
 
 .chat-menu-button {
@@ -1011,10 +957,6 @@ border-radius: 5px;
 background: transparent;
 color: var(--muted);
 opacity: 0;
-transition:
-opacity 0.15s ease,
-background 0.15s ease,
-color 0.15s ease;
 }
 
 .chat-item:hover .chat-menu-button,
@@ -1027,10 +969,6 @@ opacity: 1;
 background: var(--border);
 color: var(--text);
 }
-
-/* =========================================================
-CHAT OPTIONS MENU
-========================================================= */
 
 .chat-options-menu {
 position: absolute;
@@ -1078,7 +1016,6 @@ color: var(--danger);
 
 .chat-options-menu .delete-option:hover {
 background: #fef2f2;
-color: var(--danger);
 }
 
 .menu-divider {
@@ -1086,10 +1023,6 @@ height: 1px;
 margin: 4px 2px;
 background: var(--border);
 }
-
-/* =========================================================
-EMPTY HISTORY
-========================================================= */
 
 .empty-history {
 padding: 22px 8px;
@@ -1117,7 +1050,7 @@ line-height: 1.5;
 }
 
 /* =========================================================
-SIDEBAR LOGOUT
+SIDEBAR FOOTER
 ========================================================= */
 
 .sidebar-footer,
@@ -1144,11 +1077,6 @@ color: var(--muted);
 font-size: 11px;
 font-weight: 500;
 text-align: left;
-transition:
-background 0.15s ease,
-border-color 0.15s ease,
-color 0.15s ease,
-transform 0.15s ease;
 }
 
 .sidebar-logout-icon {
@@ -1160,18 +1088,6 @@ place-items: center;
 border-radius: 8px;
 background: var(--surface-2);
 color: var(--muted);
-transition:
-background 0.15s ease,
-color 0.15s ease,
-transform 0.15s ease;
-}
-
-.sidebar-logout svg,
-.logout-button svg,
-.sidebar-logout-icon svg {
-width: 16px;
-height: 16px;
-flex-shrink: 0;
 }
 
 .sidebar-logout-text {
@@ -1204,22 +1120,10 @@ color: var(--text);
 .logout-button:hover .sidebar-logout-icon {
 background: var(--primary-light);
 color: var(--primary);
-transform: translateX(1px);
-}
-
-.sidebar-logout:active,
-.logout-button:active {
-transform: scale(0.985);
-}
-
-.sidebar-logout:focus-visible,
-.logout-button:focus-visible {
-outline: 2px solid rgba(99, 102, 241, 0.35);
-outline-offset: 2px;
 }
 
 /* =========================================================
-SIDEBAR DARK MODE
+SIDEBAR DARK
 ========================================================= */
 
 .app.dark .sidebar {
@@ -1234,14 +1138,6 @@ border-color: #3f3f46;
 
 .app.dark .sidebar-search input {
 color: #f4f4f5;
-}
-
-.app.dark .sidebar-search input::placeholder {
-color: #71717a;
-}
-
-.app.dark .new-chat-button {
-box-shadow: 0 5px 16px rgba(79, 70, 229, 0.18);
 }
 
 .app.dark .chat-item:hover,
@@ -1272,8 +1168,6 @@ background: #2a1717;
 
 .app.dark .sidebar-logout,
 .app.dark .logout-button {
-background: transparent;
-border-color: transparent;
 color: #a1a1aa;
 }
 
@@ -1327,7 +1221,7 @@ color: var(--text);
 }
 
 /* =========================================================
-MAIN CONTENT
+MAIN CHAT
 ========================================================= */
 
 .main-content {
@@ -1337,10 +1231,6 @@ margin-left: 270px;
 display: flex;
 flex-direction: column;
 }
-
-/* =========================================================
-CHAT HEADER
-========================================================= */
 
 .chat-header {
 position: sticky;
@@ -1371,9 +1261,6 @@ border: 0;
 border-radius: 9px;
 background: transparent;
 color: var(--muted);
-transition:
-background 0.15s ease,
-color 0.15s ease;
 }
 
 .menu-button:hover,
@@ -1389,9 +1276,16 @@ gap: 8px;
 .header-logo {
 width: 29px;
 height: 29px;
+overflow: hidden;
 border-radius: 8px;
 background: #eef2ff;
 color: var(--primary);
+}
+
+.header-logo img {
+width: 100%;
+height: 100%;
+object-fit: cover;
 }
 
 .header-title {
@@ -1461,7 +1355,14 @@ min-width: 0;
 width: 29px;
 height: 29px;
 flex-shrink: 0;
+overflow: hidden;
 border-radius: 9px;
+}
+
+.message-avatar img {
+width: 100%;
+height: 100%;
+object-fit: cover;
 }
 
 .ai-avatar,
@@ -1567,10 +1468,17 @@ height: 54px;
 margin: 0 auto 14px;
 display: grid;
 place-items: center;
+overflow: hidden;
 border-radius: 16px;
 background: linear-gradient(135deg, #6366f1, #7c3aed);
 color: #fff;
 box-shadow: 0 10px 24px rgba(99, 102, 241, 0.18);
+}
+
+.welcome-icon img {
+width: 100%;
+height: 100%;
+object-fit: cover;
 }
 
 .welcome-screen h1 {
@@ -1691,9 +1599,6 @@ border: 1px solid #d4d4d8;
 border-radius: 18px;
 background: var(--surface);
 box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-transition:
-border-color 0.18s ease,
-box-shadow 0.18s ease;
 }
 
 .chat-input-wrapper:focus-within {
@@ -1736,10 +1641,6 @@ color: #a1a1aa;
 opacity: 0.7;
 }
 
-/* =========================================================
-INPUT ACTIONS
-========================================================= */
-
 .input-actions {
 display: flex;
 align-items: center;
@@ -1761,9 +1662,6 @@ border-radius: 10px;
 .input-action-button {
 background: transparent;
 color: var(--muted);
-transition:
-background 0.15s ease,
-color 0.15s ease;
 }
 
 .input-action-button:hover:not(:disabled) {
@@ -1783,9 +1681,6 @@ color: var(--danger);
 .send-button {
 background: var(--text);
 color: var(--surface);
-transition:
-background 0.15s ease,
-transform 0.15s ease;
 }
 
 .send-button:hover:not(:disabled) {
@@ -2002,7 +1897,7 @@ color: inherit;
 }
 
 /* =========================================================
-COPY RESPONSE
+COPY / STATUS
 ========================================================= */
 
 .copy-response {
@@ -2022,10 +1917,6 @@ font-size: 9px;
 background: var(--surface-2);
 color: var(--primary);
 }
-
-/* =========================================================
-VOICE / DISCLAIMER / RATE LIMIT
-========================================================= */
 
 .voice-recording-status {
 display: flex;
@@ -2075,6 +1966,591 @@ color: #fdba74;
 }
 
 /* =========================================================
+LANDING PAGE
+Same visual language as chatbot
+========================================================= */
+
+.lumora-landing {
+min-height: 100vh;
+background: var(--bg);
+color: var(--text);
+overflow-x: hidden;
+}
+
+/* ---------------------------------------------------------
+Landing Navbar
+--------------------------------------------------------- */
+
+.landing-navbar {
+position: sticky;
+top: 0;
+z-index: 40;
+width: 100%;
+height: 64px;
+padding: 0 6%;
+display: flex;
+align-items: center;
+justify-content: space-between;
+border-bottom: 1px solid var(--border);
+background: rgba(247, 247, 251, 0.88);
+backdrop-filter: blur(14px);
+-webkit-backdrop-filter: blur(14px);
+}
+
+.landing-brand {
+display: flex;
+align-items: center;
+gap: 9px;
+color: var(--text);
+text-decoration: none;
+}
+
+.landing-brand-icon {
+width: 34px;
+height: 34px;
+overflow: hidden;
+display: grid;
+place-items: center;
+border-radius: 9px;
+}
+
+.landing-brand-icon img {
+width: 100%;
+height: 100%;
+object-fit: cover;
+}
+
+.landing-brand-name {
+font-size: 15px;
+font-weight: 700;
+letter-spacing: -0.02em;
+}
+
+.landing-nav {
+display: flex;
+align-items: center;
+gap: 25px;
+}
+
+.landing-nav a {
+color: var(--muted);
+font-size: 10px;
+font-weight: 600;
+text-decoration: none;
+}
+
+.landing-nav a:hover {
+color: var(--primary);
+}
+
+.landing-nav-actions {
+display: flex;
+align-items: center;
+gap: 7px;
+}
+
+.landing-login,
+.landing-get-started {
+height: 35px;
+padding: 0 13px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+border-radius: 9px;
+font-size: 10px;
+font-weight: 600;
+text-decoration: none;
+}
+
+.landing-login {
+border: 1px solid var(--border);
+background: var(--surface);
+color: var(--text);
+}
+
+.landing-login:hover {
+border-color: #c7d2fe;
+background: var(--primary-light);
+color: var(--primary);
+}
+
+.landing-get-started {
+border: 0;
+background: linear-gradient(135deg, #6366f1, #4f46e5);
+color: #fff;
+box-shadow: 0 5px 14px rgba(79, 70, 229, 0.14);
+}
+
+.landing-get-started:hover {
+background: linear-gradient(135deg, #4f46e5, #4338ca);
+transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------
+Hero
+--------------------------------------------------------- */
+
+.landing-hero {
+position: relative;
+min-height: calc(100vh - 64px);
+padding: 90px 20px 100px;
+display: flex;
+align-items: center;
+justify-content: center;
+overflow: hidden;
+}
+
+.landing-hero::before {
+content: "";
+position: absolute;
+width: 620px;
+height: 620px;
+top: -300px;
+left: 50%;
+transform: translateX(-50%);
+border-radius: 50%;
+background: rgba(99, 102, 241, 0.09);
+filter: blur(80px);
+pointer-events: none;
+}
+
+.landing-hero-content {
+position: relative;
+z-index: 1;
+width: 100%;
+max-width: 850px;
+text-align: center;
+}
+
+.landing-badge {
+width: fit-content;
+margin: 0 auto 20px;
+padding: 6px 10px;
+display: inline-flex;
+align-items: center;
+gap: 6px;
+border: 1px solid #e0e7ff;
+border-radius: 999px;
+background: var(--primary-light);
+color: var(--primary-dark);
+font-size: 9px;
+font-weight: 700;
+}
+
+.landing-badge-dot {
+width: 6px;
+height: 6px;
+border-radius: 50%;
+background: var(--primary);
+}
+
+.landing-hero h1 {
+max-width: 760px;
+margin: 0 auto;
+color: var(--text);
+font-size: clamp(38px, 6vw, 64px);
+line-height: 1.06;
+font-weight: 700;
+letter-spacing: -0.055em;
+}
+
+.landing-hero h1 span {
+color: var(--primary);
+}
+
+.landing-hero-description {
+max-width: 570px;
+margin: 20px auto 0;
+color: var(--muted);
+font-size: 13px;
+line-height: 1.7;
+}
+
+.landing-hero-actions {
+margin-top: 28px;
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 8px;
+}
+
+.landing-primary-button,
+.landing-secondary-button {
+height: 43px;
+padding: 0 18px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: 7px;
+border-radius: 10px;
+font-size: 10px;
+font-weight: 600;
+text-decoration: none;
+}
+
+.landing-primary-button {
+border: 0;
+background: linear-gradient(135deg, #6366f1, #4f46e5);
+color: #fff;
+box-shadow: 0 8px 20px rgba(79, 70, 229, 0.18);
+}
+
+.landing-primary-button:hover {
+background: linear-gradient(135deg, #4f46e5, #4338ca);
+transform: translateY(-1px);
+}
+
+.landing-secondary-button {
+border: 1px solid var(--border);
+background: var(--surface);
+color: var(--text);
+}
+
+.landing-secondary-button:hover {
+border-color: #c7d2fe;
+background: var(--primary-light);
+color: var(--primary);
+}
+
+/* ---------------------------------------------------------
+Chat Preview
+--------------------------------------------------------- */
+
+.landing-chat-preview {
+width: min(900px, 94%);
+margin: 58px auto 0;
+padding: 1px;
+border: 1px solid #dddff5;
+border-radius: 17px;
+background: linear-gradient(
+135deg,
+rgba(99, 102, 241, 0.16),
+rgba(124, 58, 237, 0.04)
+);
+box-shadow:
+0 22px 60px rgba(24, 24, 27, 0.08),
+0 8px 24px rgba(79, 70, 229, 0.05);
+}
+
+.landing-chat-window {
+overflow: hidden;
+border-radius: 16px;
+background: var(--surface);
+}
+
+.landing-chat-header {
+height: 45px;
+padding: 0 14px;
+display: flex;
+align-items: center;
+gap: 8px;
+border-bottom: 1px solid var(--border-light);
+background: var(--surface);
+}
+
+.landing-chat-dots {
+display: flex;
+gap: 5px;
+}
+
+.landing-chat-dots span {
+width: 6px;
+height: 6px;
+border-radius: 50%;
+background: #d4d4d8;
+}
+
+.landing-chat-title {
+margin-left: 5px;
+color: var(--muted);
+font-size: 9px;
+font-weight: 600;
+}
+
+.landing-chat-body {
+min-height: 290px;
+padding: 27px;
+display: flex;
+flex-direction: column;
+gap: 17px;
+background: var(--bg);
+}
+
+.landing-preview-message {
+max-width: 64%;
+padding: 10px 13px;
+border-radius: 12px;
+font-size: 9px;
+line-height: 1.55;
+}
+
+.landing-preview-message.ai {
+align-self: flex-start;
+background: var(--surface-2);
+color: var(--text);
+}
+
+.landing-preview-message.user {
+align-self: flex-end;
+background: linear-gradient(135deg, #6366f1, #4f46e5);
+color: #fff;
+}
+
+/* ---------------------------------------------------------
+Sections
+--------------------------------------------------------- */
+
+.landing-section {
+width: 100%;
+padding: 90px 20px;
+}
+
+.landing-section-inner {
+width: 100%;
+max-width: 1050px;
+margin: auto;
+}
+
+.landing-section-heading {
+max-width: 590px;
+margin: 0 auto 42px;
+text-align: center;
+}
+
+.landing-section-heading span {
+display: inline-block;
+margin-bottom: 8px;
+color: var(--primary);
+font-size: 9px;
+font-weight: 700;
+text-transform: uppercase;
+letter-spacing: 0.08em;
+}
+
+.landing-section-heading h2 {
+margin: 0;
+color: var(--text);
+font-size: clamp(25px, 4vw, 35px);
+line-height: 1.15;
+letter-spacing: -0.04em;
+}
+
+.landing-section-heading p {
+margin: 11px auto 0;
+color: var(--muted);
+font-size: 11px;
+line-height: 1.65;
+}
+
+/* ---------------------------------------------------------
+Feature Cards
+--------------------------------------------------------- */
+
+.landing-features {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 12px;
+}
+
+.landing-feature-card {
+padding: 21px;
+border: 1px solid var(--border);
+border-radius: 13px;
+background: var(--surface);
+transition:
+transform 0.2s ease,
+border-color 0.2s ease,
+box-shadow 0.2s ease;
+}
+
+.landing-feature-card:hover {
+transform: translateY(-3px);
+border-color: #c7d2fe;
+box-shadow: 0 12px 28px rgba(79, 70, 229, 0.07);
+}
+
+.landing-feature-icon {
+width: 37px;
+height: 37px;
+margin-bottom: 14px;
+display: grid;
+place-items: center;
+border-radius: 10px;
+background: var(--primary-light);
+color: var(--primary);
+}
+
+.landing-feature-card h3 {
+margin: 0;
+font-size: 13px;
+font-weight: 700;
+}
+
+.landing-feature-card p {
+margin: 7px 0 0;
+color: var(--muted);
+font-size: 10px;
+line-height: 1.6;
+}
+
+/* ---------------------------------------------------------
+CTA
+--------------------------------------------------------- */
+
+.landing-cta {
+width: min(950px, calc(100% - 40px));
+margin: 10px auto 90px;
+padding: 52px 25px;
+position: relative;
+overflow: hidden;
+border: 1px solid #dddff5;
+border-radius: 17px;
+background:
+radial-gradient(
+circle at 50% 0%,
+rgba(99, 102, 241, 0.12),
+transparent 55%
+),
+var(--surface);
+text-align: center;
+}
+
+.landing-cta h2 {
+margin: 0;
+color: var(--text);
+font-size: clamp(25px, 4vw, 35px);
+letter-spacing: -0.04em;
+}
+
+.landing-cta p {
+max-width: 490px;
+margin: 11px auto 21px;
+color: var(--muted);
+font-size: 11px;
+line-height: 1.6;
+}
+
+/* ---------------------------------------------------------
+Footer
+--------------------------------------------------------- */
+
+.landing-footer {
+padding: 27px 20px;
+border-top: 1px solid var(--border);
+background: var(--surface);
+}
+
+.landing-footer-inner {
+max-width: 1050px;
+margin: auto;
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 20px;
+}
+
+.landing-footer p {
+margin: 0;
+color: var(--muted-light);
+font-size: 9px;
+}
+
+.landing-footer-links {
+display: flex;
+gap: 17px;
+}
+
+.landing-footer-links a {
+color: var(--muted);
+font-size: 9px;
+text-decoration: none;
+}
+
+.landing-footer-links a:hover {
+color: var(--primary);
+}
+
+/* =========================================================
+LANDING DARK MODE
+========================================================= */
+
+.app.dark .landing-navbar {
+border-bottom-color: #3f3f46;
+background: rgba(24, 24, 27, 0.88);
+}
+
+.app.dark .landing-brand {
+color: #f4f4f5;
+}
+
+.app.dark .landing-login,
+.app.dark .landing-secondary-button {
+border-color: #3f3f46;
+background: #202023;
+color: #f4f4f5;
+}
+
+.app.dark .landing-login:hover,
+.app.dark .landing-secondary-button:hover {
+border-color: #4f46e5;
+background: #27234f;
+color: #c7d2fe;
+}
+
+.app.dark .landing-hero::before {
+background: rgba(99, 102, 241, 0.14);
+}
+
+.app.dark .landing-badge {
+border-color: #3730a3;
+background: #27234f;
+color: #c7d2fe;
+}
+
+.app.dark .landing-chat-preview {
+border-color: #3f3f46;
+background: #202023;
+box-shadow:
+0 25px 70px rgba(0, 0, 0, 0.35),
+0 8px 25px rgba(79, 70, 229, 0.08);
+}
+
+.app.dark .landing-chat-window,
+.app.dark .landing-chat-header {
+background: #202023;
+}
+
+.app.dark .landing-chat-body {
+background: #18181b;
+}
+
+.app.dark .landing-feature-card {
+border-color: #3f3f46;
+background: #202023;
+}
+
+.app.dark .landing-feature-card:hover {
+border-color: #4f46e5;
+box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+}
+
+.app.dark .landing-cta {
+border-color: #3f3f46;
+background:
+radial-gradient(
+circle at 50% 0%,
+rgba(99, 102, 241, 0.16),
+transparent 55%
+),
+#202023;
+}
+
+.app.dark .landing-footer {
+border-top-color: #3f3f46;
+background: #18181b;
+}
+
+/* =========================================================
 ANIMATIONS
 ========================================================= */
 
@@ -2103,7 +2579,7 @@ transform: scale(0.75);
 }
 
 /* =========================================================
-TABLET / MOBILE
+TABLET
 ========================================================= */
 
 @media (max-width: 899px) {
@@ -2131,6 +2607,14 @@ max-width: 84%;
 
 .app.dark .sidebar {
 box-shadow: 8px 0 30px rgba(0, 0, 0, 0.45);
+}
+
+.landing-features {
+grid-template-columns: 1fr;
+}
+
+.landing-section {
+padding: 75px 18px;
 }
 }
 
@@ -2228,6 +2712,87 @@ padding: 11px;
 .logout-button {
 height: 40px;
 }
+
+/* Landing */
+
+.landing-navbar {
+height: 60px;
+padding: 0 15px;
+}
+
+.landing-nav {
+display: none;
+}
+
+.landing-brand-name {
+font-size: 14px;
+}
+
+.landing-brand-icon {
+width: 32px;
+height: 32px;
+}
+
+.landing-login,
+.landing-get-started {
+height: 33px;
+padding: 0 10px;
+font-size: 9px;
+}
+
+.landing-hero {
+min-height: auto;
+padding: 65px 16px 75px;
+}
+
+.landing-hero h1 {
+font-size: clamp(34px, 10vw, 50px);
+}
+
+.landing-hero-description {
+font-size: 11px;
+}
+
+.landing-hero-actions {
+flex-direction: column;
+}
+
+.landing-primary-button,
+.landing-secondary-button {
+width: 100%;
+max-width: 280px;
+}
+
+.landing-chat-preview {
+width: 100%;
+margin-top: 42px;
+border-radius: 14px;
+}
+
+.landing-chat-window {
+border-radius: 13px;
+}
+
+.landing-chat-body {
+min-height: 220px;
+padding: 15px;
+}
+
+.landing-preview-message {
+max-width: 82%;
+font-size: 9px;
+}
+
+.landing-cta {
+width: calc(100% - 30px);
+margin-bottom: 60px;
+padding: 40px 18px;
+}
+
+.landing-footer-inner {
+flex-direction: column;
+text-align: center;
+}
 }
 
 /* =========================================================
@@ -2282,6 +2847,18 @@ height: 35px;
 .chat-input {
 padding-left: 5px;
 padding-right: 5px;
+}
+
+.landing-hero {
+padding-top: 50px;
+}
+
+.landing-hero h1 {
+font-size: 32px;
+}
+
+.landing-badge {
+font-size: 8px;
 }
 }
 
