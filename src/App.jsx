@@ -27,6 +27,7 @@ import supabase from "./lib/supabase"
 
 const MOBILE_BREAKPOINT = 900
 const MESSAGE_LIMIT = 100
+const LOGO_PATH = "/Lumora-logo.svg"
 
 function App() {
   const {
@@ -1090,7 +1091,10 @@ function ChatApp() {
 
           <div className="header-center">
             <div className="header-logo">
-              <Sparkles size={15} />
+              <img
+                src={LOGO_PATH}
+                alt="Lumora AI"
+              />
             </div>
 
             <div className="header-brand-text">
