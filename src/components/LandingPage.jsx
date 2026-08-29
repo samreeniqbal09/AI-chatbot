@@ -25,7 +25,6 @@ function LandingPage({ onGetStarted }) {
 
         <div className="landing-nav">
           <a href="#features">Features</a>
-          <a href="#how-it-works">How it works</a>
         </div>
 
         <div className="landing-nav-actions">
@@ -118,59 +117,78 @@ function LandingPage({ onGetStarted }) {
       {/* Features */}
       <section id="features" className="landing-section">
         <div className="landing-section-inner">
-          <div className="landing-section-heading">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.5 }}
+            className="landing-section-heading"
+          >
             <span>Why Lumora</span>
             <h2>Everything you need in one assistant</h2>
             <p>
               A focused, distraction-free AI experience built for real work
               and everyday curiosity.
             </p>
-          </div>
+          </motion.div>
 
           <div className="landing-features">
-            <Feature
-              icon={<MessageSquare size={17} />}
-              title="Natural Conversations"
-              text="Chat naturally and get helpful, human-quality responses every time."
-            />
-            <Feature
-              icon={<Zap size={17} />}
-              title="Fast & Simple"
-              text="Get answers instantly, without unnecessary complexity getting in the way."
-            />
-            <Feature
-              icon={<Sparkles size={17} />}
-              title="Built for Ideas"
-              text="Brainstorm, learn, create, and explore with an assistant that keeps up."
-            />
+            {[
+              {
+                icon: <MessageSquare size={17} />,
+                title: "Natural Conversations",
+                text: "Chat naturally and get helpful, human-quality responses every time.",
+              },
+              {
+                icon: <Zap size={17} />,
+                title: "Fast & Simple",
+                text: "Get answers instantly, without unnecessary complexity getting in the way.",
+              },
+              {
+                icon: <Sparkles size={17} />,
+                title: "Built for Ideas",
+                text: "Brainstorm, learn, create, and explore with an assistant that keeps up.",
+              },
+            ].map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 22 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.45, delay: i * 0.08 }}
+              >
+                <Feature icon={f.icon} title={f.title} text={f.text} />
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="landing-cta">
-        <h2>Ready to get started?</h2>
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.4 }}
+        transition={{ duration: 0.5 }}
+        className="landing-cta"
+      >
+        <h2>Ready when you are</h2>
         <p>
-          Join Lumora AI today and turn your questions and ideas into
-          answers, instantly.
+          Jump in and start chatting with Lumora AI — no setup, no learning
+          curve, just answers.
         </p>
         <div className="landing-hero-actions">
           <button type="button" className="landing-primary-button" onClick={onGetStarted}>
-            Get Started
+            Start chatting free
             <ArrowRight size={14} />
           </button>
         </div>
-      </section>
+      </motion.section>
 
       {/* Footer */}
       <footer className="landing-footer">
         <div className="landing-footer-inner">
           <p>© 2026 Lumora AI. All rights reserved.</p>
-          <div className="landing-footer-links">
-            <a href="#top">Privacy</a>
-            <a href="#top">Terms</a>
-            <a href="#top">Contact</a>
-          </div>
         </div>
       </footer>
     </div>
