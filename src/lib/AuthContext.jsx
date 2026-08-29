@@ -166,7 +166,39 @@ export function AuthProvider({ children }) {
   // ---------------------------------------------
 
   const signOut = async () => {
-    return await supabase.auth.signOut()
+    try {
+      const { error } =
+        await supabase.auth.signOut()
+
+      if (error) {
+        console.error(
+          "Logout error:",
+          error
+        )
+
+        return {
+          error,
+        }
+      }
+
+      // Clear the local authentication state
+      // immediately after successful logout.
+      setUser(null)
+      setRecoveryMode(false)
+
+      return {
+        error: null,
+      }
+    } catch (error) {
+      console.error(
+        "Unexpected logout error:",
+        error
+      )
+
+      return {
+        error,
+      }
+    }
   }
 
   return (
