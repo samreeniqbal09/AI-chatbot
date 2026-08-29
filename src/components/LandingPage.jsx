@@ -12,16 +12,11 @@ function LandingPage({ onGetStarted }) {
       {/* Navbar */}
       <nav className="landing-navbar">
         <a href="#top" className="landing-brand">
-          <div className="landing-brand-icon">
-            <img
-              src="/Lumora-logo.svg"
-              alt="Lumora AI"
-            />
-          </div>
-
-          <span className="landing-brand-name">
-            Lumora AI
-          </span>
+          <img
+            className="landing-brand-logo"
+            src="/Lumora-logo.svg"
+            alt="Lumora AI"
+          />
         </a>
 
         <div className="landing-nav">
