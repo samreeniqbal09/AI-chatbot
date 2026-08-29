@@ -374,7 +374,7 @@ function Sidebar({
               }}
             >
               <img
-                src="/lumora-icon.svg"
+                src="/logo.svg"
                 alt="Lumora AI"
                 className="brand-icon-img"
               />
@@ -488,9 +488,7 @@ function Sidebar({
                   duration: 0.2,
                 }}
               >
-                {/* ==================================
-                    PINNED
-                ================================== */}
+                {/* PINNED */}
 
                 {pinned.length > 0 && (
                   <>
@@ -530,9 +528,7 @@ function Sidebar({
                   </>
                 )}
 
-                {/* ==================================
-                    RECENT
-                ================================== */}
+                {/* RECENT */}
 
                 {recent.length > 0 && (
                   <>
@@ -573,9 +569,7 @@ function Sidebar({
                   </>
                 )}
 
-                {/* ==================================
-                    EMPTY
-                ================================== */}
+                {/* EMPTY */}
 
                 {!filteredChats.length && (
                   <div className="empty-history">
@@ -732,8 +726,6 @@ function ChatItem({
               event.stopPropagation()
             }
           >
-            {/* PIN */}
-
             <button
               type="button"
               onClick={() =>
@@ -749,8 +741,6 @@ function ChatItem({
               </span>
             </button>
 
-            {/* RENAME */}
-
             <button
               type="button"
               onClick={() =>
@@ -761,8 +751,6 @@ function ChatItem({
 
               <span>Rename</span>
             </button>
-
-            {/* ADD TO PROJECT */}
 
             <button
               type="button"
@@ -778,8 +766,6 @@ function ChatItem({
             </button>
 
             <div className="menu-divider" />
-
-            {/* DELETE */}
 
             <button
               className="delete-option"

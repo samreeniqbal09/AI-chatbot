@@ -13,32 +13,60 @@ function LandingPage({ onGetStarted }) {
       <nav className="landing-navbar">
         <a href="#top" className="landing-brand">
           <div className="landing-brand-icon">
-            <img src="/logo/lumora-icon.svg" alt="Lumora AI" />
+            <img
+              src="/logo.svg"
+              alt="Lumora AI"
+            />
           </div>
-          <span className="landing-brand-name">Lumora AI</span>
+
+          <span className="landing-brand-name">
+            Lumora AI
+          </span>
         </a>
 
         <div className="landing-nav">
-          <a href="#features">Features</a>
+          <a href="#features">
+            Features
+          </a>
         </div>
 
         <div className="landing-nav-actions">
-          <button type="button" className="landing-login" onClick={onGetStarted}>
+          <button
+            type="button"
+            className="landing-login"
+            onClick={onGetStarted}
+          >
             Sign In
           </button>
-          <button type="button" className="landing-get-started" onClick={onGetStarted}>
+
+          <button
+            type="button"
+            className="landing-get-started"
+            onClick={onGetStarted}
+          >
             Get Started
           </button>
         </div>
       </nav>
 
       {/* Hero */}
-      <header id="top" className="landing-hero">
+      <header
+        id="top"
+        className="landing-hero"
+      >
         <div className="landing-hero-content">
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
+            initial={{
+              opacity: 0,
+              y: 14,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.45,
+            }}
             className="landing-badge"
           >
             <span className="landing-badge-dot" />
@@ -46,43 +74,96 @@ function LandingPage({ onGetStarted }) {
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
+            initial={{
+              opacity: 0,
+              y: 18,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.5,
+              delay: 0.05,
+            }}
           >
-            Your ideas, <span>powered by AI.</span>
+            Your ideas,{" "}
+            <span>
+              powered by AI.
+            </span>
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            initial={{
+              opacity: 0,
+              y: 14,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.5,
+              delay: 0.1,
+            }}
             className="landing-hero-description"
           >
-            Ask questions, explore ideas, write code, solve problems, and
-            learn something new with your intelligent AI assistant.
+            Ask questions, explore
+            ideas, write code, solve
+            problems, and learn
+            something new with your
+            intelligent AI assistant.
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
+            initial={{
+              opacity: 0,
+              y: 14,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.5,
+              delay: 0.15,
+            }}
             className="landing-hero-actions"
           >
-            <button type="button" className="landing-primary-button" onClick={onGetStarted}>
+            <button
+              type="button"
+              className="landing-primary-button"
+              onClick={onGetStarted}
+            >
               Get Started
               <ArrowRight size={14} />
             </button>
-            <button type="button" className="landing-secondary-button" onClick={onGetStarted}>
+
+            <button
+              type="button"
+              className="landing-secondary-button"
+              onClick={onGetStarted}
+            >
               Sign In
             </button>
           </motion.div>
 
           {/* Chat Preview */}
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.55, delay: 0.2 }}
+            initial={{
+              opacity: 0,
+              y: 30,
+              scale: 0.98,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+            }}
+            transition={{
+              duration: 0.55,
+              delay: 0.2,
+            }}
             className="landing-chat-preview"
           >
             <div className="landing-chat-window">
@@ -92,16 +173,23 @@ function LandingPage({ onGetStarted }) {
                   <span />
                   <span />
                 </div>
-                <span className="landing-chat-title">Lumora AI · Online</span>
+
+                <span className="landing-chat-title">
+                  Lumora AI · Online
+                </span>
               </div>
 
               <div className="landing-chat-body">
                 <div className="landing-preview-message user">
-                  Help me come up with a creative project idea.
+                  Help me come up with a
+                  creative project idea.
                 </div>
+
                 <div className="landing-preview-message ai">
-                  Absolutely! Let's turn your idea into something practical,
-                  creative, and exciting.
+                  Absolutely! Let's turn
+                  your idea into something
+                  practical, creative, and
+                  exciting.
                 </div>
               </div>
             </div>
@@ -110,49 +198,106 @@ function LandingPage({ onGetStarted }) {
       </header>
 
       {/* Features */}
-      <section id="features" className="landing-section">
+      <section
+        id="features"
+        className="landing-section"
+      >
         <div className="landing-section-inner">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.5 }}
+            initial={{
+              opacity: 0,
+              y: 20,
+            }}
+            whileInView={{
+              opacity: 1,
+              y: 0,
+            }}
+            viewport={{
+              once: true,
+              amount: 0.4,
+            }}
+            transition={{
+              duration: 0.5,
+            }}
             className="landing-section-heading"
           >
-            <span>Why Lumora</span>
-            <h2>Everything you need in one assistant</h2>
+            <span>
+              Why Lumora
+            </span>
+
+            <h2>
+              Everything you need in
+              one assistant
+            </h2>
+
             <p>
-              A focused, distraction-free AI experience built for real work
-              and everyday curiosity.
+              A focused,
+              distraction-free AI
+              experience built for real
+              work and everyday
+              curiosity.
             </p>
           </motion.div>
 
           <div className="landing-features">
             {[
               {
-                icon: <MessageSquare size={17} />,
-                title: "Natural Conversations",
-                text: "Chat naturally and get helpful, human-quality responses every time.",
+                icon: (
+                  <MessageSquare
+                    size={17}
+                  />
+                ),
+                title:
+                  "Natural Conversations",
+                text:
+                  "Chat naturally and get helpful, human-quality responses every time.",
               },
               {
-                icon: <Zap size={17} />,
-                title: "Fast & Simple",
-                text: "Get answers instantly, without unnecessary complexity getting in the way.",
+                icon: (
+                  <Zap size={17} />
+                ),
+                title:
+                  "Fast & Simple",
+                text:
+                  "Get answers instantly, without unnecessary complexity getting in the way.",
               },
               {
-                icon: <Sparkles size={17} />,
-                title: "Built for Ideas",
-                text: "Brainstorm, learn, create, and explore with an assistant that keeps up.",
+                icon: (
+                  <Sparkles
+                    size={17}
+                  />
+                ),
+                title:
+                  "Built for Ideas",
+                text:
+                  "Brainstorm, learn, create, and explore with an assistant that keeps up.",
               },
-            ].map((f, i) => (
+            ].map((feature, index) => (
               <motion.div
-                key={f.title}
-                initial={{ opacity: 0, y: 22 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ duration: 0.45, delay: i * 0.08 }}
+                key={feature.title}
+                initial={{
+                  opacity: 0,
+                  y: 22,
+                }}
+                whileInView={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                viewport={{
+                  once: true,
+                  amount: 0.4,
+                }}
+                transition={{
+                  duration: 0.45,
+                  delay:
+                    index * 0.08,
+                }}
               >
-                <Feature icon={f.icon} title={f.title} text={f.text} />
+                <Feature
+                  icon={feature.icon}
+                  title={feature.title}
+                  text={feature.text}
+                />
               </motion.div>
             ))}
           </div>
@@ -161,19 +306,40 @@ function LandingPage({ onGetStarted }) {
 
       {/* CTA */}
       <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.4 }}
-        transition={{ duration: 0.5 }}
+        initial={{
+          opacity: 0,
+          y: 24,
+        }}
+        whileInView={{
+          opacity: 1,
+          y: 0,
+        }}
+        viewport={{
+          once: true,
+          amount: 0.4,
+        }}
+        transition={{
+          duration: 0.5,
+        }}
         className="landing-cta"
       >
-        <h2>Ready when you are</h2>
+        <h2>
+          Ready when you are
+        </h2>
+
         <p>
-          Jump in and start chatting with Lumora AI — no setup, no learning
-          curve, just answers.
+          Jump in and start chatting
+          with Lumora AI — no setup,
+          no learning curve, just
+          answers.
         </p>
+
         <div className="landing-hero-actions">
-          <button type="button" className="landing-primary-button" onClick={onGetStarted}>
+          <button
+            type="button"
+            className="landing-primary-button"
+            onClick={onGetStarted}
+          >
             Start chatting free
             <ArrowRight size={14} />
           </button>
@@ -183,18 +349,29 @@ function LandingPage({ onGetStarted }) {
       {/* Footer */}
       <footer className="landing-footer">
         <div className="landing-footer-inner">
-          <p>© 2026 Lumora AI. All rights reserved.</p>
+          <p>
+            © 2026 Lumora AI. All rights
+            reserved.
+          </p>
         </div>
       </footer>
     </div>
   )
 }
 
-function Feature({ icon, title, text }) {
+function Feature({
+  icon,
+  title,
+  text,
+}) {
   return (
     <div className="landing-feature-card">
-      <div className="landing-feature-icon">{icon}</div>
+      <div className="landing-feature-icon">
+        {icon}
+      </div>
+
       <h3>{title}</h3>
+
       <p>{text}</p>
     </div>
   )

@@ -9,7 +9,6 @@ import {
   KeyRound,
   LockKeyhole,
   Mail,
-  Sparkles,
 } from "lucide-react"
 import { useAuth } from "../lib/AuthContext"
 
@@ -46,7 +45,6 @@ export default function AuthPage({ onBack }) {
     setLoading(true)
 
     try {
-      // FORGOT PASSWORD
       if (isForgot) {
         const result = await resetPassword(email)
 
@@ -61,7 +59,6 @@ export default function AuthPage({ onBack }) {
         return
       }
 
-      // LOGIN / SIGN UP
       const result = isLogin
         ? await signIn(email, password)
         : await signUp(email, password)
@@ -100,28 +97,30 @@ export default function AuthPage({ onBack }) {
           duration: 0.4,
         }}
       >
-        {/* BACK TO LANDING PAGE */}
+        {/* BACK TO LANDING */}
 
         {onBack && (
           <button
             type="button"
             onClick={onBack}
             className="lumora-auth-back"
-            style={{ marginBottom: 16, alignSelf: "flex-start" }}
           >
             <ArrowLeft size={15} />
             Back to home
           </button>
         )}
 
-        {/* LOGO */}
+        {/* BRAND */}
 
         <div className="lumora-auth-brand">
           <div className="lumora-auth-brand-icon">
-            <Sparkles size={21} />
+            <img
+              src="/logo.svg"
+              alt="Lumora AI"
+            />
           </div>
 
-          <div>
+          <div className="lumora-auth-brand-copy">
             <div className="lumora-auth-brand-name">
               Lumora AI
             </div>
@@ -145,11 +144,14 @@ export default function AuthPage({ onBack }) {
                   <KeyRound size={22} />
                 </div>
 
-                <h1>Forgot your password?</h1>
+                <h1>
+                  Forgot your password?
+                </h1>
 
                 <p>
-                  Enter your email address and we'll
-                  send you a link to reset your password.
+                  Enter your email address and
+                  we'll send you a link to reset
+                  your password.
                 </p>
               </div>
 
@@ -239,7 +241,7 @@ export default function AuthPage({ onBack }) {
                 </p>
               </div>
 
-              {/* TABS */}
+              {/* LOGIN / SIGNUP SWITCH */}
 
               <div className="lumora-auth-switch">
                 <button
