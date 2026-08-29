@@ -11,6 +11,7 @@ import {
   FolderPlus,
   ChevronDown,
   X,
+  LogOut,
 } from "lucide-react"
 
 function Sidebar({
@@ -20,6 +21,7 @@ function Sidebar({
   onSelectChat,
   onDeleteChat,
   onRenameChat,
+  onLogout,
   sidebarOpen,
   setSidebarOpen,
   darkMode,
@@ -299,6 +301,24 @@ function Sidebar({
     )
   }
 
+  // --------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------
+
+  const handleLogout = async () => {
+    if (!onLogout) return
+
+    setOpenMenu(null)
+
+    try {
+      await onLogout()
+    } finally {
+      if (isMobile) {
+        setSidebarOpen(false)
+      }
+    }
+  }
+
   return (
     <>
       {/* ============================================
@@ -415,9 +435,7 @@ function Sidebar({
         >
           <Plus size={17} />
 
-          <span>
-            New chat
-          </span>
+          <span>New chat</span>
         </motion.button>
 
         {/* ==========================================
@@ -435,9 +453,7 @@ function Sidebar({
             }
             aria-expanded={showRecent}
           >
-            <span>
-              Recent chats
-            </span>
+            <span>Recent chats</span>
 
             <motion.span
               className="section-chevron"
@@ -583,6 +599,29 @@ function Sidebar({
             )}
           </AnimatePresence>
         </div>
+
+        {/* ==========================================
+            LOGOUT
+        ========================================== */}
+
+        <div className="sidebar-bottom">
+          <motion.button
+            type="button"
+            className="logout-button"
+            onClick={handleLogout}
+            whileHover={{
+              x: 2,
+            }}
+            whileTap={{
+              scale: 0.97,
+            }}
+            aria-label="Log out"
+          >
+            <LogOut size={17} />
+
+            <span>Log out</span>
+          </motion.button>
+        </div>
       </motion.aside>
     </>
   )
@@ -720,9 +759,7 @@ function ChatItem({
             >
               <Pencil size={14} />
 
-              <span>
-                Rename
-              </span>
+              <span>Rename</span>
             </button>
 
             {/* ADD TO PROJECT */}
@@ -753,9 +790,7 @@ function ChatItem({
             >
               <Trash2 size={14} />
 
-              <span>
-                Delete
-              </span>
+              <span>Delete</span>
             </button>
           </motion.div>
         )}

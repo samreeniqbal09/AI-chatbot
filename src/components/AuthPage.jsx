@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "../lib/AuthContext"
 
-export default function AuthPage() {
+export default function AuthPage({ onBack }) {
   const {
     signIn,
     signUp,
@@ -100,6 +100,20 @@ export default function AuthPage() {
           duration: 0.4,
         }}
       >
+        {/* BACK TO LANDING PAGE */}
+
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="lumora-auth-back"
+            style={{ marginBottom: 16, alignSelf: "flex-start" }}
+          >
+            <ArrowLeft size={15} />
+            Back to home
+          </button>
+        )}
+
         {/* LOGO */}
 
         <div className="lumora-auth-brand">

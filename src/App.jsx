@@ -35,14 +35,6 @@ function App() {
   } = useAuth()
 
   const [isRecovery, setIsRecovery] = useState(false)
-
-  /*
-   * SHOW AUTH PAGE
-   *
-   * Landing page is shown first.
-   * Clicking Get Started / Sign In
-   * changes this to the authentication page.
-   */
   const [showAuth, setShowAuth] = useState(false)
 
   /*
@@ -93,18 +85,17 @@ function App() {
 
   /*
    * PASSWORD RESET
-   *
-   * Recovery must always take priority.
    */
   if (isRecovery) {
-    return <ResetPasswordPage />
+    return (
+      <ResetPasswordPage
+        onComplete={() => setIsRecovery(false)}
+      />
+    )
   }
 
   /*
    * LOGGED-IN USER
-   *
-   * Skip landing/auth and go directly
-   * to the chatbot.
    */
   if (user) {
     return <ChatApp />
@@ -112,8 +103,6 @@ function App() {
 
   /*
    * LANDING PAGE
-   *
-   * This is the first page visitors see.
    */
   if (!showAuth) {
     return (
@@ -582,7 +571,10 @@ function ChatApp() {
         .update({
           title,
         })
-        .eq("id", chatId)
+        .eq(
+          "id",
+          chatId
+        )
         .eq(
           "user_id",
           user.id

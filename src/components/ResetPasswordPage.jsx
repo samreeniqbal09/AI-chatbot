@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "../lib/AuthContext"
 
-export default function ResetPasswordPage() {
+export default function ResetPasswordPage({ onComplete }) {
   const { updatePassword } = useAuth()
 
   const [password, setPassword] = useState("")
@@ -26,6 +26,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
   const [ready, setReady] = useState(false)
+  const [done, setDone] = useState(false)
 
   useEffect(() => {
     // Supabase places the recovery session in the URL.
@@ -67,11 +68,12 @@ export default function ResetPasswordPage() {
       }
 
       setMessage(
-        "Your password has been updated successfully. You can now sign in with your new password."
+        "Your password has been updated successfully. You can now continue to Lumora AI."
       )
 
       setPassword("")
       setConfirmPassword("")
+      setDone(true)
     } catch (err) {
       setError(
         err?.message || "Unable to update password."
@@ -79,6 +81,20 @@ export default function ResetPasswordPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleContinue = () => {
+    // Clear the recovery hash/query from the URL so a
+    // refresh doesn't re-trigger recovery mode.
+    try {
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      )
+    } catch {}
+
+    onComplete?.()
   }
 
   return (
@@ -133,153 +149,163 @@ export default function ResetPasswordPage() {
             </p>
           </div>
 
-          <form
-            className="lumora-auth-form"
-            onSubmit={handleSubmit}
-          >
-            {/* NEW PASSWORD */}
-
-            <div className="lumora-auth-field">
-              <label htmlFor="new-password">
-                New password
-              </label>
-
-              <div className="lumora-auth-input">
-                <LockKeyhole size={17} />
-
-                <input
-                  id="new-password"
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
-                  placeholder="Enter new password"
-                  autoComplete="new-password"
-                  minLength={6}
-                  required
-                  disabled={!ready}
-                />
-
-                <button
-                  type="button"
-                  className="lumora-auth-eye"
-                  onClick={() =>
-                    setShowPassword(
-                      (value) => !value
-                    )
-                  }
-                  aria-label={
-                    showPassword
-                      ? "Hide password"
-                      : "Show password"
-                  }
-                >
-                  {showPassword ? (
-                    <EyeOff size={17} />
-                  ) : (
-                    <Eye size={17} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* CONFIRM PASSWORD */}
-
-            <div className="lumora-auth-field">
-              <label htmlFor="confirm-password">
-                Confirm password
-              </label>
-
-              <div className="lumora-auth-input">
-                <LockKeyhole size={17} />
-
-                <input
-                  id="confirm-password"
-                  type={
-                    showConfirmPassword
-                      ? "text"
-                      : "password"
-                  }
-                  value={confirmPassword}
-                  onChange={(e) =>
-                    setConfirmPassword(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Confirm new password"
-                  autoComplete="new-password"
-                  minLength={6}
-                  required
-                  disabled={!ready}
-                />
-
-                <button
-                  type="button"
-                  className="lumora-auth-eye"
-                  onClick={() =>
-                    setShowConfirmPassword(
-                      (value) => !value
-                    )
-                  }
-                  aria-label={
-                    showConfirmPassword
-                      ? "Hide password"
-                      : "Show password"
-                  }
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={17} />
-                  ) : (
-                    <Eye size={17} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* ERROR */}
-
-            {error && (
-              <div className="lumora-auth-error">
-                {error}
-              </div>
-            )}
-
-            {/* SUCCESS */}
-
-            {message && (
+          {done ? (
+            <>
               <div className="lumora-auth-success">
                 <CheckCircle2 size={16} />
                 <span>{message}</span>
               </div>
-            )}
 
-            {/* BUTTON */}
-
-            <button
-              type="submit"
-              className="lumora-auth-submit"
-              disabled={
-                loading ||
-                !ready ||
-                !password ||
-                !confirmPassword
-              }
+              <button
+                type="button"
+                className="lumora-auth-submit"
+                onClick={handleContinue}
+                style={{ marginTop: 16 }}
+              >
+                Continue to Lumora AI
+                <ArrowRight size={17} />
+              </button>
+            </>
+          ) : (
+            <form
+              className="lumora-auth-form"
+              onSubmit={handleSubmit}
             >
-              {loading ? (
-                "Updating..."
-              ) : (
-                <>
-                  Update password
-                  <ArrowRight size={17} />
-                </>
+              {/* NEW PASSWORD */}
+
+              <div className="lumora-auth-field">
+                <label htmlFor="new-password">
+                  New password
+                </label>
+
+                <div className="lumora-auth-input">
+                  <LockKeyhole size={17} />
+
+                  <input
+                    id="new-password"
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
+                    }
+                    value={password}
+                    onChange={(e) =>
+                      setPassword(e.target.value)
+                    }
+                    placeholder="Enter new password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                    disabled={!ready}
+                  />
+
+                  <button
+                    type="button"
+                    className="lumora-auth-eye"
+                    onClick={() =>
+                      setShowPassword(
+                        (value) => !value
+                      )
+                    }
+                    aria-label={
+                      showPassword
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOff size={17} />
+                    ) : (
+                      <Eye size={17} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* CONFIRM PASSWORD */}
+
+              <div className="lumora-auth-field">
+                <label htmlFor="confirm-password">
+                  Confirm password
+                </label>
+
+                <div className="lumora-auth-input">
+                  <LockKeyhole size={17} />
+
+                  <input
+                    id="confirm-password"
+                    type={
+                      showConfirmPassword
+                        ? "text"
+                        : "password"
+                    }
+                    value={confirmPassword}
+                    onChange={(e) =>
+                      setConfirmPassword(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Confirm new password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                    disabled={!ready}
+                  />
+
+                  <button
+                    type="button"
+                    className="lumora-auth-eye"
+                    onClick={() =>
+                      setShowConfirmPassword(
+                        (value) => !value
+                      )
+                    }
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={17} />
+                    ) : (
+                      <Eye size={17} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* ERROR */}
+
+              {error && (
+                <div className="lumora-auth-error">
+                  {error}
+                </div>
               )}
-            </button>
-          </form>
+
+              {/* BUTTON */}
+
+              <button
+                type="submit"
+                className="lumora-auth-submit"
+                disabled={
+                  loading ||
+                  !ready ||
+                  !password ||
+                  !confirmPassword
+                }
+              >
+                {loading ? (
+                  "Updating..."
+                ) : (
+                  <>
+                    Update password
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
         </section>
 
         <div className="lumora-auth-footer">

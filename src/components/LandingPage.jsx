@@ -6,19 +6,14 @@ import {
   Zap,
 } from "lucide-react"
 
-const gradientIcon = {
-  background: "linear-gradient(135deg, #6366f1, #7c3aed)",
-  color: "#fff",
-}
-
 function LandingPage({ onGetStarted }) {
   return (
     <div className="lumora-landing">
       {/* Navbar */}
       <nav className="landing-navbar">
         <a href="#top" className="landing-brand">
-          <div className="landing-brand-icon" style={gradientIcon}>
-            <Sparkles size={16} />
+          <div className="landing-brand-icon">
+            <img src="/logo/lumora-icon.svg" alt="Lumora AI" />
           </div>
           <span className="landing-brand-name">Lumora AI</span>
         </a>
