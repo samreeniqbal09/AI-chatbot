@@ -11,10 +11,7 @@ import {
   FolderPlus,
   ChevronDown,
   X,
-  LogOut,
 } from "lucide-react"
-
-import { useAuth } from "../lib/AuthContext"
 
 function Sidebar({
   chats = [],
@@ -27,8 +24,6 @@ function Sidebar({
   setSidebarOpen,
   darkMode,
 }) {
-  const { signOut } = useAuth()
-
   const [search, setSearch] = useState("")
   const [showRecent, setShowRecent] = useState(true)
   const [openMenu, setOpenMenu] = useState(null)
@@ -68,10 +63,7 @@ function Sidebar({
     window.addEventListener("resize", handleResize)
 
     return () => {
-      window.removeEventListener(
-        "resize",
-        handleResize
-      )
+      window.removeEventListener("resize", handleResize)
     }
   }, [setSidebarOpen])
 
@@ -93,9 +85,7 @@ function Sidebar({
   // --------------------------------------------------
 
   useEffect(() => {
-    const ids = new Set(
-      chats.map((chat) => chat.id)
-    )
+    const ids = new Set(chats.map((chat) => chat.id))
 
     setPinnedChats((previous) =>
       previous.filter((id) => ids.has(id))
@@ -120,16 +110,10 @@ function Sidebar({
       }
     }
 
-    window.addEventListener(
-      "keydown",
-      handleEscape
-    )
+    window.addEventListener("keydown", handleEscape)
 
     return () => {
-      window.removeEventListener(
-        "keydown",
-        handleEscape
-      )
+      window.removeEventListener("keydown", handleEscape)
     }
   }, [
     openMenu,
@@ -147,12 +131,8 @@ function Sidebar({
 
     const handleOutsideClick = (event) => {
       if (
-        event.target.closest(
-          ".chat-options-menu"
-        ) ||
-        event.target.closest(
-          ".chat-menu-button"
-        )
+        event.target.closest(".chat-options-menu") ||
+        event.target.closest(".chat-menu-button")
       ) {
         return
       }
@@ -193,9 +173,7 @@ function Sidebar({
   // --------------------------------------------------
 
   const filteredChats = useMemo(() => {
-    const query = search
-      .trim()
-      .toLowerCase()
+    const query = search.trim().toLowerCase()
 
     return chats
       .filter((chat) =>
@@ -215,8 +193,7 @@ function Sidebar({
   )
 
   const recent = filteredChats.filter(
-    (chat) =>
-      !pinnedChats.includes(chat.id)
+    (chat) => !pinnedChats.includes(chat.id)
   )
 
   // --------------------------------------------------
@@ -266,9 +243,7 @@ function Sidebar({
   const togglePin = (chatId) => {
     setPinnedChats((previous) =>
       previous.includes(chatId)
-        ? previous.filter(
-            (id) => id !== chatId
-          )
+        ? previous.filter((id) => id !== chatId)
         : [...previous, chatId]
     )
 
@@ -307,9 +282,7 @@ function Sidebar({
     onDeleteChat?.(chatId)
 
     setPinnedChats((previous) =>
-      previous.filter(
-        (id) => id !== chatId
-      )
+      previous.filter((id) => id !== chatId)
     )
   }
 
@@ -324,35 +297,6 @@ function Sidebar({
       "Add chat to project:",
       chat.id
     )
-  }
-
-  // --------------------------------------------------
-  // LOGOUT
-  // --------------------------------------------------
-
-  const handleLogout = async () => {
-    setOpenMenu(null)
-
-    try {
-      const { error } = await signOut()
-
-      if (error) {
-        console.error(
-          "Logout error:",
-          error
-        )
-        return
-      }
-
-      if (isMobile) {
-        setSidebarOpen(false)
-      }
-    } catch (error) {
-      console.error(
-        "Logout error:",
-        error
-      )
-    }
   }
 
   return (
@@ -379,9 +323,7 @@ function Sidebar({
 
       <motion.aside
         className={`sidebar ${
-          darkMode
-            ? "sidebar-dark"
-            : ""
+          darkMode ? "sidebar-dark" : ""
         }`}
         initial={false}
         animate={{
@@ -426,17 +368,6 @@ function Sidebar({
               </span>
             </div>
           </div>
-
-          {isMobile && (
-            <button
-              className="sidebar-close-button"
-              type="button"
-              onClick={closeSidebar}
-              aria-label="Close sidebar"
-            >
-              <X size={18} />
-            </button>
-          )}
         </div>
 
         {/* ==========================================
@@ -451,9 +382,7 @@ function Sidebar({
             value={search}
             placeholder="Search chats"
             onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
+              setSearch(event.target.value)
             }
             aria-label="Search chats"
           />
@@ -461,9 +390,7 @@ function Sidebar({
           {search && (
             <button
               type="button"
-              onClick={() =>
-                setSearch("")
-              }
+              onClick={() => setSearch("")}
               aria-label="Clear search"
             >
               <X size={14} />
@@ -503,8 +430,7 @@ function Sidebar({
             type="button"
             onClick={() =>
               setShowRecent(
-                (previous) =>
-                  !previous
+                (previous) => !previous
               )
             }
             aria-expanded={showRecent}
@@ -556,40 +482,35 @@ function Sidebar({
                       Pinned
                     </div>
 
-                    {pinned.map(
-                      (chat) => (
-                        <ChatItem
-                          key={chat.id}
-                          chat={chat}
-                          activeChat={
-                            activeChat
-                          }
-                          pinned
-                          menuOpen={
-                            openMenu ===
-                            chat.id
-                          }
-                          setOpenMenu={
-                            setOpenMenu
-                          }
-                          onSelectChat={
-                            handleSelectChat
-                          }
-                          onTogglePin={
-                            togglePin
-                          }
-                          onRename={
-                            handleRename
-                          }
-                          onAddToProject={
-                            handleAddToProject
-                          }
-                          onDelete={
-                            handleDelete
-                          }
-                        />
-                      )
-                    )}
+                    {pinned.map((chat) => (
+                      <ChatItem
+                        key={chat.id}
+                        chat={chat}
+                        activeChat={activeChat}
+                        pinned
+                        menuOpen={
+                          openMenu === chat.id
+                        }
+                        setOpenMenu={
+                          setOpenMenu
+                        }
+                        onSelectChat={
+                          handleSelectChat
+                        }
+                        onTogglePin={
+                          togglePin
+                        }
+                        onRename={
+                          handleRename
+                        }
+                        onAddToProject={
+                          handleAddToProject
+                        }
+                        onDelete={
+                          handleDelete
+                        }
+                      />
+                    ))}
                   </>
                 )}
 
@@ -605,39 +526,34 @@ function Sidebar({
                       </div>
                     )}
 
-                    {recent.map(
-                      (chat) => (
-                        <ChatItem
-                          key={chat.id}
-                          chat={chat}
-                          activeChat={
-                            activeChat
-                          }
-                          menuOpen={
-                            openMenu ===
-                            chat.id
-                          }
-                          setOpenMenu={
-                            setOpenMenu
-                          }
-                          onSelectChat={
-                            handleSelectChat
-                          }
-                          onTogglePin={
-                            togglePin
-                          }
-                          onRename={
-                            handleRename
-                          }
-                          onAddToProject={
-                            handleAddToProject
-                          }
-                          onDelete={
-                            handleDelete
-                          }
-                        />
-                      )
-                    )}
+                    {recent.map((chat) => (
+                      <ChatItem
+                        key={chat.id}
+                        chat={chat}
+                        activeChat={activeChat}
+                        menuOpen={
+                          openMenu === chat.id
+                        }
+                        setOpenMenu={
+                          setOpenMenu
+                        }
+                        onSelectChat={
+                          handleSelectChat
+                        }
+                        onTogglePin={
+                          togglePin
+                        }
+                        onRename={
+                          handleRename
+                        }
+                        onAddToProject={
+                          handleAddToProject
+                        }
+                        onDelete={
+                          handleDelete
+                        }
+                      />
+                    ))}
                   </>
                 )}
 
@@ -647,9 +563,7 @@ function Sidebar({
 
                 {!filteredChats.length && (
                   <div className="empty-history">
-                    <MessageSquare
-                      size={18}
-                    />
+                    <MessageSquare size={18} />
 
                     <p>
                       {search
@@ -668,31 +582,6 @@ function Sidebar({
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        {/* ==========================================
-            LOGOUT
-        ========================================== */}
-
-        <div className="sidebar-footer">
-          <motion.button
-            className="sidebar-logout"
-            type="button"
-            onClick={handleLogout}
-            whileTap={{
-              scale: 0.985,
-            }}
-          >
-            <span className="sidebar-logout-icon">
-              <LogOut size={16} />
-            </span>
-
-            <span className="sidebar-logout-text">
-              <strong>
-                Log out
-              </strong>
-            </span>
-          </motion.button>
         </div>
       </motion.aside>
     </>
@@ -748,8 +637,7 @@ function ChatItem({
       {/* TITLE */}
 
       <span className="chat-title">
-        {chat.title ||
-          "New Chat"}
+        {chat.title || "New Chat"}
       </span>
 
       {/* THREE DOTS */}
@@ -810,9 +698,7 @@ function ChatItem({
             <button
               type="button"
               onClick={() =>
-                onTogglePin(
-                  chat.id
-                )
+                onTogglePin(chat.id)
               }
             >
               <Pin size={14} />
@@ -844,9 +730,7 @@ function ChatItem({
             <button
               type="button"
               onClick={() =>
-                onAddToProject(
-                  chat
-                )
+                onAddToProject(chat)
               }
             >
               <FolderPlus size={14} />
@@ -864,9 +748,7 @@ function ChatItem({
               className="delete-option"
               type="button"
               onClick={() =>
-                onDelete(
-                  chat.id
-                )
+                onDelete(chat.id)
               }
             >
               <Trash2 size={14} />
