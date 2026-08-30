@@ -23,11 +23,11 @@ import Sidebar from "./components/Sidebar"
 import ChatMessage from "./components/ChatMessage"
 import ChatInput from "./components/ChatInput"
 import QuickPrompts from "./components/QuickPrompts"
+import LumoraIcon from "./components/logo/LumoraIcon"
 import supabase from "./lib/supabase"
 
 const MOBILE_BREAKPOINT = 900
 const MESSAGE_LIMIT = 100
-const LOGO_PATH = "/Lumora-logo.svg"
 
 function App() {
   const {
@@ -1091,10 +1091,7 @@ function ChatApp() {
 
           <div className="header-center">
             <div className="header-logo">
-              <img
-                src={LOGO_PATH}
-                alt="Lumora AI"
-              />
+              <LumoraIcon size={32} />
             </div>
 
             <div className="header-brand-text">

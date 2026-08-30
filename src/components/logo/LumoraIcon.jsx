@@ -10,7 +10,7 @@ function LumoraIcon({ size = 32, className = "" }) {
     >
       <defs>
         <linearGradient id="lumoraGradient" x1="10" y1="10" x2="90" y2="90">
-          <stop offset="0%" stopColor="#A78BFA" />
+          <stop offset="0%" stopColor="#6366F1" />
           <stop offset="100%" stopColor="#7C3AED" />
         </linearGradient>
       </defs>
