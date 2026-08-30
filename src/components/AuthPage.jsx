@@ -11,6 +11,7 @@ import {
   Mail,
 } from "lucide-react"
 import { useAuth } from "../lib/AuthContext"
+import LumoraIcon from "./logo/LumoraIcon"
 
 export default function AuthPage({ onBack }) {
   const {
@@ -71,9 +72,7 @@ export default function AuthPage({ onBack }) {
         )
       }
     } catch (err) {
-      setError(
-        err?.message || "Something went wrong."
-      )
+      setError(err?.message || "Something went wrong.")
     } finally {
       setLoading(false)
     }
@@ -114,10 +113,7 @@ export default function AuthPage({ onBack }) {
 
         <div className="lumora-auth-brand">
           <div className="lumora-auth-brand-icon">
-            <img
-              src="/Lumora-logo.svg"
-              alt="Lumora AI"
-            />
+            <LumoraIcon size={42} />
           </div>
 
           <div className="lumora-auth-brand-copy">
@@ -134,7 +130,6 @@ export default function AuthPage({ onBack }) {
         {/* CARD */}
 
         <section className="lumora-auth-card">
-
           {/* FORGOT PASSWORD */}
 
           {isForgot ? (
