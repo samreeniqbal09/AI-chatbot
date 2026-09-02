@@ -28,6 +28,10 @@ function ChatInput({
 
   const hasContent = Boolean(input.trim() || attachment)
 
+  // --------------------------------------------------
+  // PREFILL INPUT
+  // --------------------------------------------------
+
   useEffect(() => {
     if (!prefillText) return
 
@@ -47,6 +51,10 @@ function ChatInput({
     })
   }, [prefillText, prefillKey])
 
+  // --------------------------------------------------
+  // VOICE SUPPORT
+  // --------------------------------------------------
+
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition ||
@@ -63,6 +71,10 @@ function ChatInput({
     }
   }, [])
 
+  // --------------------------------------------------
+  // TEXTAREA RESIZE
+  // --------------------------------------------------
+
   const resizeTextarea = () => {
     requestAnimationFrame(() => {
       const textarea = textareaRef.current
@@ -75,6 +87,10 @@ function ChatInput({
       )}px`
     })
   }
+
+  // --------------------------------------------------
+  // CLEAR INPUT
+  // --------------------------------------------------
 
   const clearInput = () => {
     setInput("")
@@ -89,6 +105,10 @@ function ChatInput({
     }
   }
 
+  // --------------------------------------------------
+  // SEND MESSAGE
+  // --------------------------------------------------
+
   const send = (event) => {
     event?.preventDefault()
 
@@ -102,6 +122,10 @@ function ChatInput({
     clearInput()
   }
 
+  // --------------------------------------------------
+  // KEYBOARD HANDLING
+  // --------------------------------------------------
+
   const handleKeyDown = (event) => {
     if (event.key !== "Enter" || event.shiftKey) return
 
@@ -114,6 +138,10 @@ function ChatInput({
     resizeTextarea()
   }
 
+  // --------------------------------------------------
+  // IMAGE COMPRESSION
+  // --------------------------------------------------
+
   const compressImage = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -123,47 +151,75 @@ function ChatInput({
 
         image.onload = () => {
           const maxSize = 1280
+
           const scale = Math.min(
             1,
             maxSize / image.width,
             maxSize / image.height
           )
 
-          const width = Math.round(image.width * scale)
-          const height = Math.round(image.height * scale)
+          const width = Math.round(
+            image.width * scale
+          )
 
-          const canvas = document.createElement("canvas")
+          const height = Math.round(
+            image.height * scale
+          )
+
+          const canvas =
+            document.createElement("canvas")
+
           canvas.width = width
           canvas.height = height
 
           const context = canvas.getContext("2d")
 
           if (!context) {
-            reject(new Error("Unable to process image."))
+            reject(
+              new Error("Unable to process image.")
+            )
             return
           }
 
-          context.drawImage(image, 0, 0, width, height)
+          context.drawImage(
+            image,
+            0,
+            0,
+            width,
+            height
+          )
 
           resolve(
-            canvas.toDataURL("image/jpeg", 0.75)
+            canvas.toDataURL(
+              "image/jpeg",
+              0.75
+            )
           )
         }
 
         image.onerror = () =>
-          reject(new Error("Unable to load image."))
+          reject(
+            new Error("Unable to load image.")
+          )
 
         image.src = reader.result
       }
 
       reader.onerror = () =>
-        reject(new Error("Unable to read image."))
+        reject(
+          new Error("Unable to read image.")
+        )
 
       reader.readAsDataURL(file)
     })
 
+  // --------------------------------------------------
+  // IMAGE ATTACHMENT
+  // --------------------------------------------------
+
   const handleFile = async (event) => {
     const file = event.target.files?.[0]
+
     if (!file) return
 
     if (!file.type.startsWith("image/")) {
@@ -173,7 +229,9 @@ function ChatInput({
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      alert("Image is too large. Please choose an image smaller than 8MB.")
+      alert(
+        "Image is too large. Please choose an image smaller than 8MB."
+      )
       event.target.value = ""
       return
     }
@@ -187,8 +245,14 @@ function ChatInput({
         data,
       })
     } catch (error) {
-      console.error("Image processing error:", error)
-      alert("Unable to process this image. Please try another image.")
+      console.error(
+        "Image processing error:",
+        error
+      )
+
+      alert(
+        "Unable to process this image. Please try another image."
+      )
     }
 
     event.target.value = ""
@@ -201,6 +265,10 @@ function ChatInput({
       fileRef.current.value = ""
     }
   }
+
+  // --------------------------------------------------
+  // VOICE INPUT
+  // --------------------------------------------------
 
   const stopVoice = () => {
     voiceSessionRef.current += 1
@@ -225,11 +293,15 @@ function ChatInput({
     } catch {}
 
     const recognition = new SpeechRecognition()
-    const sessionId = voiceSessionRef.current + 1
+
+    const sessionId =
+      voiceSessionRef.current + 1
 
     recognitionRef.current = recognition
     voiceSessionRef.current = sessionId
-    voiceBaseTextRef.current = input.trim()
+
+    voiceBaseTextRef.current =
+      input.trim()
 
     recognition.continuous = true
     recognition.interimResults = true
@@ -237,22 +309,38 @@ function ChatInput({
     recognition.lang = "en-US"
 
     recognition.onstart = () => {
-      if (sessionId === voiceSessionRef.current) {
+      if (
+        sessionId ===
+        voiceSessionRef.current
+      ) {
         setRecording(true)
       }
     }
 
     recognition.onresult = (event) => {
-      if (sessionId !== voiceSessionRef.current) return
+      if (
+        sessionId !==
+        voiceSessionRef.current
+      ) {
+        return
+      }
 
       let transcript = ""
 
-      for (let i = 0; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript
+      for (
+        let i = 0;
+        i < event.results.length;
+        i++
+      ) {
+        transcript +=
+          event.results[i][0].transcript
       }
 
-      const spokenText = transcript.trim()
-      const baseText = voiceBaseTextRef.current
+      const spokenText =
+        transcript.trim()
+
+      const baseText =
+        voiceBaseTextRef.current
 
       setInput(
         spokenText
@@ -266,7 +354,12 @@ function ChatInput({
     }
 
     recognition.onerror = (event) => {
-      if (sessionId !== voiceSessionRef.current) return
+      if (
+        sessionId !==
+        voiceSessionRef.current
+      ) {
+        return
+      }
 
       console.error(
         "Speech recognition error:",
@@ -276,24 +369,32 @@ function ChatInput({
       setRecording(false)
       recognitionRef.current = null
 
-      const messages = {
+      const errorMessages = {
         "not-allowed":
           "Microphone permission was denied. Please allow microphone access in your browser.",
+
         "service-not-allowed":
           "Microphone permission was denied. Please allow microphone access in your browser.",
+
         "audio-capture":
           "No microphone was detected. Please check your microphone.",
+
         network:
           "Voice recognition needs an internet connection.",
       }
 
-      if (messages[event.error]) {
-        alert(messages[event.error])
+      if (errorMessages[event.error]) {
+        alert(errorMessages[event.error])
       }
     }
 
     recognition.onend = () => {
-      if (sessionId !== voiceSessionRef.current) return
+      if (
+        sessionId !==
+        voiceSessionRef.current
+      ) {
+        return
+      }
 
       setRecording(false)
       recognitionRef.current = null
@@ -319,11 +420,20 @@ function ChatInput({
       alert(
         "Voice input is not supported in this browser. Please use Google Chrome or Microsoft Edge."
       )
+
       return
     }
 
-    recording ? stopVoice() : startVoice()
+    if (recording) {
+      stopVoice()
+    } else {
+      startVoice()
+    }
   }
+
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
 
   return (
     <div className="chat-input-container">
@@ -334,9 +444,19 @@ function ChatInput({
         {attachment && (
           <motion.div
             className="image-preview"
-            initial={{ opacity: 0, scale: 0.85, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
+            initial={{
+              opacity: 0,
+              scale: 0.85,
+              y: 6,
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.18,
+            }}
           >
             <img
               src={attachment.url}
@@ -363,17 +483,23 @@ function ChatInput({
             onChange={handleFile}
           />
 
+          {/* Attachment */}
           <button
             type="button"
             className="input-action-button"
-            onClick={() => fileRef.current?.click()}
-            disabled={loading || recording}
+            onClick={() =>
+              fileRef.current?.click()
+            }
+            disabled={
+              loading || recording
+            }
             aria-label="Attach image"
             title="Attach image"
           >
             <Plus size={20} />
           </button>
 
+          {/* Text input */}
           <textarea
             ref={textareaRef}
             value={input}
@@ -393,10 +519,13 @@ function ChatInput({
           />
 
           <div className="input-actions">
+            {/* Voice */}
             <motion.button
               type="button"
               className={`input-action-button ${
-                recording ? "recording" : ""
+                recording
+                  ? "recording"
+                  : ""
               }`}
               onClick={toggleVoice}
               disabled={loading}
@@ -414,8 +543,16 @@ function ChatInput({
               }
               animate={
                 recording
-                  ? { scale: [1, 1.08, 1] }
-                  : { scale: 1 }
+                  ? {
+                      scale: [
+                        1,
+                        1.08,
+                        1,
+                      ],
+                    }
+                  : {
+                      scale: 1,
+                    }
               }
               transition={
                 recording
@@ -424,27 +561,41 @@ function ChatInput({
                       repeat: Infinity,
                       ease: "easeInOut",
                     }
-                  : { duration: 0.15 }
+                  : {
+                      duration: 0.15,
+                    }
               }
             >
               {recording ? (
-                <Square size={15} fill="currentColor" />
+                <Square
+                  size={15}
+                  fill="currentColor"
+                />
               ) : (
                 <Mic size={19} />
               )}
             </motion.button>
 
+            {/* Send */}
             <motion.button
               type="submit"
               className="send-button"
-              disabled={!hasContent || loading || recording}
+              disabled={
+                !hasContent ||
+                loading ||
+                recording
+              }
               whileHover={
-                hasContent && !loading && !recording
+                hasContent &&
+                !loading &&
+                !recording
                   ? { scale: 1.05 }
                   : undefined
               }
               whileTap={
-                hasContent && !loading && !recording
+                hasContent &&
+                !loading &&
+                !recording
                   ? { scale: 0.94 }
                   : undefined
               }
@@ -452,7 +603,10 @@ function ChatInput({
               title="Send message"
             >
               {loading ? (
-                <Loader2 size={18} className="spin" />
+                <Loader2
+                  size={18}
+                  className="spin"
+                />
               ) : (
                 <ArrowUp size={19} />
               )}
@@ -461,11 +615,18 @@ function ChatInput({
         </div>
       </form>
 
+      {/* Voice status */}
       {recording && (
         <motion.div
           className="voice-recording-status"
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{
+            opacity: 0,
+            y: 5,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
         >
           <span className="voice-recording-dot" />
           Listening... Speak now
@@ -473,7 +634,8 @@ function ChatInput({
       )}
 
       <p className="disclaimer">
-        Lumora AI can make mistakes. Check important information.
+        Lumora AI can make mistakes. Check
+        important information.
       </p>
     </div>
   )

@@ -35,7 +35,10 @@ class handler(BaseHTTPRequestHandler):
             # -------------------------------------------------
 
             origin = self.headers.get("Origin", "")
-            allowed_origin = os.environ.get("ALLOWED_ORIGIN", "*")
+            allowed_origin = os.environ.get(
+                "ALLOWED_ORIGIN",
+                "*"
+            )
 
             if (
                 allowed_origin != "*"
@@ -52,7 +55,10 @@ class handler(BaseHTTPRequestHandler):
             # AUTHENTICATION
             # -------------------------------------------------
 
-            authorization = self.headers.get("Authorization", "")
+            authorization = self.headers.get(
+                "Authorization",
+                ""
+            )
 
             if not authorization.startswith("Bearer "):
                 self.send_json(
@@ -70,12 +76,18 @@ class handler(BaseHTTPRequestHandler):
 
             if not access_token:
                 self.send_json(
-                    {"error": "Invalid authentication token."},
+                    {
+                        "error": (
+                            "Invalid authentication token."
+                        )
+                    },
                     401
                 )
                 return
 
-            user_id = self.verify_user(access_token)
+            user_id = self.verify_user(
+                access_token
+            )
 
             if not user_id:
                 self.send_json(
@@ -112,7 +124,10 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            if not rate_result.get("allowed", False):
+            if not rate_result.get(
+                "allowed",
+                False
+            ):
                 retry_minutes = max(
                     1,
                     int(
@@ -212,7 +227,10 @@ class handler(BaseHTTPRequestHandler):
             # -------------------------------------------------
 
             question = str(
-                data.get("question", "")
+                data.get(
+                    "question",
+                    ""
+                )
             ).strip()
 
             if len(question) > MAX_QUESTION_LENGTH:
@@ -295,8 +313,9 @@ class handler(BaseHTTPRequestHandler):
 
                 self.send_json(
                     {
-                        "error":
+                        "error": (
                             "AI service is not configured."
+                        )
                     },
                     500
                 )
@@ -327,7 +346,7 @@ class handler(BaseHTTPRequestHandler):
                 )
 
             # -------------------------------------------------
-            # OPENROUTER
+            # OPENROUTER CLIENT
             # -------------------------------------------------
 
             client = OpenAI(
@@ -336,6 +355,35 @@ class handler(BaseHTTPRequestHandler):
                 ),
                 api_key=api_key,
             )
+
+            # -------------------------------------------------
+            # DETECT STREAMING REQUEST
+            # -------------------------------------------------
+
+            wants_stream = (
+                "text/event-stream"
+                in self.headers.get(
+                    "Accept",
+                    ""
+                )
+            )
+
+            # -------------------------------------------------
+            # STREAMING MODE
+            # -------------------------------------------------
+
+            if wants_stream:
+                self.stream_response(
+                    client=client,
+                    content=content,
+                    image=image,
+                    rate_result=rate_result
+                )
+                return
+
+            # -------------------------------------------------
+            # LEGACY NON-STREAMING MODE
+            # -------------------------------------------------
 
             response = (
                 client.chat.completions.create(
@@ -408,12 +456,229 @@ class handler(BaseHTTPRequestHandler):
             )
 
     # =====================================================
+    # OPENROUTER STREAM
+    # =====================================================
+
+    def stream_response(
+        self,
+        client,
+        content,
+        image,
+        rate_result
+    ):
+        """
+        Streams the OpenRouter response to the frontend
+        using Server-Sent Events (SSE).
+        """
+
+        stream_started = False
+
+        try:
+            # -------------------------------------------------
+            # START OPENROUTER STREAM
+            # -------------------------------------------------
+
+            stream = client.chat.completions.create(
+                model="qwen/qwen3.7-flash",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                stream=True,
+            )
+
+            # -------------------------------------------------
+            # SSE HEADERS
+            # -------------------------------------------------
+
+            self.send_response(200)
+
+            self.send_header(
+                "Content-Type",
+                "text/event-stream; charset=utf-8"
+            )
+
+            self.send_header(
+                "Cache-Control",
+                "no-cache, no-store, must-revalidate"
+            )
+
+            self.send_header(
+                "Connection",
+                "keep-alive"
+            )
+
+            self.send_header(
+                "X-Accel-Buffering",
+                "no"
+            )
+
+            self.send_cors_headers()
+
+            self.end_headers()
+
+            stream_started = True
+
+            # -------------------------------------------------
+            # STREAM CHUNKS
+            # -------------------------------------------------
+
+            full_answer = ""
+
+            for chunk in stream:
+
+                if not chunk.choices:
+                    continue
+
+                choice = chunk.choices[0]
+
+                if not choice:
+                    continue
+
+                delta = choice.delta
+
+                if not delta:
+                    continue
+
+                text = delta.content
+
+                if not text:
+                    continue
+
+                text = str(text)
+
+                full_answer += text
+
+                self.write_sse(
+                    {
+                        "type": "chunk",
+                        "content": text,
+                    }
+                )
+
+            # -------------------------------------------------
+            # EMPTY RESPONSE FALLBACK
+            # -------------------------------------------------
+
+            if not full_answer.strip():
+                full_answer = (
+                    "I couldn't generate a response."
+                )
+
+                self.write_sse(
+                    {
+                        "type": "chunk",
+                        "content": full_answer,
+                    }
+                )
+
+            # -------------------------------------------------
+            # STREAM COMPLETE
+            # -------------------------------------------------
+
+            self.write_sse(
+                {
+                    "type": "done",
+                    "answer": full_answer,
+                    "image": image or None,
+                    "remaining": rate_result.get(
+                        "remaining"
+                    ),
+                }
+            )
+
+        except Exception as error:
+            print(
+                "STREAM ERROR:",
+                repr(error)
+            )
+
+            # -------------------------------------------------
+            # STREAM ERROR
+            # -------------------------------------------------
+            #
+            # If SSE headers have already been sent, we cannot
+            # send another normal HTTP response. Send an SSE
+            # error event instead.
+            # -------------------------------------------------
+
+            if stream_started:
+                try:
+                    self.write_sse(
+                        {
+                            "type": "error",
+                            "error": (
+                                "Something went wrong while "
+                                "streaming the AI response."
+                            ),
+                        }
+                    )
+                except Exception as sse_error:
+                    print(
+                        "SSE ERROR:",
+                        repr(sse_error)
+                    )
+
+            else:
+                # The OpenRouter request failed before the SSE
+                # response was started, so a normal JSON error
+                # response is still safe.
+                try:
+                    self.send_json(
+                        {
+                            "error": (
+                                "Something went wrong while "
+                                "processing your request."
+                            )
+                        },
+                        500
+                    )
+                except Exception as response_error:
+                    print(
+                        "RESPONSE ERROR:",
+                        repr(response_error)
+                    )
+
+    # =====================================================
+    # SSE WRITER
+    # =====================================================
+
+    def write_sse(self, data):
+        """
+        Writes one Server-Sent Event to the client.
+        """
+
+        payload = (
+            "data: "
+            + json.dumps(
+                data,
+                ensure_ascii=False
+            )
+            + "\n\n"
+        )
+
+        self.wfile.write(
+            payload.encode("utf-8")
+        )
+
+        self.wfile.flush()
+
+    # =====================================================
     # OPTIONS
     # =====================================================
 
     def do_OPTIONS(self):
         self.send_response(204)
+
+        self.send_header(
+            "Cache-Control",
+            "no-store"
+        )
+
         self.send_cors_headers()
+
         self.end_headers()
 
     # =====================================================
@@ -508,7 +773,6 @@ class handler(BaseHTTPRequestHandler):
             return None
 
         try:
-
             url = (
                 supabase_url.rstrip("/")
                 + "/rest/v1/rpc/check_message_limit"
@@ -606,7 +870,7 @@ class handler(BaseHTTPRequestHandler):
 
         self.send_header(
             "Access-Control-Allow-Headers",
-            "Content-Type, Authorization"
+            "Content-Type, Authorization, Accept"
         )
 
         self.send_header(

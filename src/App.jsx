@@ -138,6 +138,7 @@ function ChatApp() {
   const [activeChat, setActiveChat] = useState(null)
 
   const [loading, setLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [limitReached, setLimitReached] = useState(false)
@@ -220,7 +221,7 @@ function ChatApp() {
       behavior: "smooth",
       block: "end",
     })
-  }, [messages, loading])
+  }, [messages, loading, isStreaming])
 
   /*
    * MOBILE SIDEBAR
@@ -483,6 +484,7 @@ function ChatApp() {
 
     setMessages([])
     setActiveChat(null)
+    setIsStreaming(false)
 
     if (
       window.innerWidth <
@@ -682,19 +684,20 @@ function ChatApp() {
   }
 
   /*
-   * BACKEND
+   * BACKEND STREAMING
    */
   const askBackend = async (
     question,
-    image
+    image,
+    onChunk,
+    onDone
   ) => {
     const {
       data: {
         session,
       },
       error: sessionError,
-    } =
-      await supabase.auth.getSession()
+    } = await supabase.auth.getSession()
 
     if (sessionError) {
       throw new Error(
@@ -718,6 +721,8 @@ function ChatApp() {
           headers: {
             "Content-Type":
               "application/json",
+            "Accept":
+              "text/event-stream",
             Authorization:
               `Bearer ${session.access_token}`,
           },
@@ -728,78 +733,335 @@ function ChatApp() {
         }
       )
 
-    const responseText =
-      await response.text()
-
-    let data = null
-
-    try {
-      data =
-        JSON.parse(
-          responseText
-        )
-    } catch {
-      throw new Error(
-        response.ok
-          ? "API returned invalid JSON."
-          : `API error ${response.status}: ${responseText}`
-      )
-    }
-
     /*
-     * RATE LIMIT
-     */
-    if (
-      response.status === 429 ||
-      data?.rate_limited === true
-    ) {
-      const minutes =
-        Number(
-          data?.retry_after_minutes
-        ) || 1
-
-      setRetryMinutes(minutes)
-      setLimitReached(true)
-      setRemainingMessages(0)
-
-      const limitError =
-        new Error(
-          data?.error ||
-            `You've reached your ${MESSAGE_LIMIT} message limit. Please try again in ${minutes} minutes.`
-        )
-
-      limitError.isRateLimit = true
-
-      throw limitError
-    }
-
-    /*
-     * OTHER API ERROR
+     * The backend sends normal JSON for errors such as
+     * authentication/rate limiting, so read those responses
+     * before attempting to consume the stream.
      */
     if (!response.ok) {
+      const responseText =
+        await response.text()
+
+      let data = null
+
+      try {
+        data = JSON.parse(responseText)
+      } catch {
+        // Keep the original response text.
+      }
+
+      /*
+       * RATE LIMIT
+       */
+      if (
+        response.status === 429 ||
+        data?.rate_limited === true
+      ) {
+        const minutes =
+          Number(
+            data?.retry_after_minutes
+          ) || 1
+
+        setRetryMinutes(minutes)
+        setLimitReached(true)
+        setRemainingMessages(0)
+
+        const limitError =
+          new Error(
+            data?.error ||
+              `You've reached your ${MESSAGE_LIMIT} message limit. Please try again in ${minutes} minutes.`
+          )
+
+        limitError.isRateLimit = true
+
+        throw limitError
+      }
+
       throw new Error(
         data?.error ||
           data?.message ||
+          responseText ||
           `API error ${response.status}`
       )
     }
 
-    /*
-     * UPDATE REMAINING COUNT
-     */
-    if (
-      typeof data?.remaining ===
-      "number"
-    ) {
-      setRemainingMessages(
-        Math.max(
-          0,
-          data.remaining
-        )
+    if (!response.body) {
+      throw new Error(
+        "Streaming is not supported by this browser."
       )
     }
 
-    return data
+    const contentType =
+      response.headers.get(
+        "content-type"
+      ) || ""
+
+    if (
+      !contentType.includes(
+        "text/event-stream"
+      )
+    ) {
+      /*
+       * Safety fallback for an older deployment that may
+       * still return the original JSON response.
+       */
+      const responseText =
+        await response.text()
+
+      let data = null
+
+      try {
+        data = JSON.parse(responseText)
+      } catch {
+        throw new Error(
+          "API returned an invalid response."
+        )
+      }
+
+      if (
+        typeof data?.remaining ===
+          "number"
+      ) {
+        setRemainingMessages(
+          Math.max(
+            0,
+            data.remaining
+          )
+        )
+      }
+
+      const answer =
+        data?.answer ||
+        data?.reply ||
+        data?.response ||
+        data?.message
+
+      if (
+        typeof answer !== "string" ||
+        !answer.trim()
+      ) {
+        throw new Error(
+          "API returned no AI answer."
+        )
+      }
+
+      onChunk(answer)
+
+      onDone({
+        answer,
+        image:
+          data?.image || null,
+        remaining:
+          data?.remaining,
+      })
+
+      return
+    }
+
+    /*
+     * STREAMING RESPONSE
+     */
+    const reader =
+      response.body.getReader()
+
+    const decoder =
+      new TextDecoder("utf-8")
+
+    let buffer = ""
+    let completed = false
+
+    try {
+      while (true) {
+        const {
+          value,
+          done,
+        } = await reader.read()
+
+        if (done) break
+
+        buffer += decoder.decode(
+          value,
+          { stream: true }
+        )
+
+        const events =
+          buffer.split("\n\n")
+
+        buffer =
+          events.pop() || ""
+
+        for (const event of events) {
+          const lines =
+            event.split(/\r?\n/)
+
+          for (const line of lines) {
+            if (
+              !line.startsWith("data:")
+            ) {
+              continue
+            }
+
+            const jsonText =
+              line.slice(5).trim()
+
+            if (!jsonText) continue
+
+            let payload
+
+            try {
+              payload =
+                JSON.parse(jsonText)
+            } catch (parseError) {
+              console.warn(
+                "Invalid SSE data:",
+                parseError
+              )
+              continue
+            }
+
+            if (
+              payload?.type ===
+                "chunk" &&
+              typeof payload.content ===
+                "string" &&
+              payload.content
+            ) {
+              onChunk(
+                payload.content
+              )
+            }
+
+            if (
+              payload?.type === "done"
+            ) {
+              completed = true
+
+              if (
+                typeof payload.remaining ===
+                  "number"
+              ) {
+                setRemainingMessages(
+                  Math.max(
+                    0,
+                    payload.remaining
+                  )
+                )
+              }
+
+              onDone({
+                answer:
+                  payload.answer || "",
+                image:
+                  payload.image || null,
+                remaining:
+                  payload.remaining,
+              })
+            }
+
+            if (
+              payload?.type === "error"
+            ) {
+              throw new Error(
+                payload.error ||
+                  "The AI response could not be streamed."
+              )
+            }
+          }
+        }
+      }
+
+      /*
+       * Process any final bytes left in the decoder.
+       */
+      buffer += decoder.decode()
+
+      if (buffer.trim()) {
+        const lines =
+          buffer.split(/\r?\n/)
+
+        for (const line of lines) {
+          if (
+            !line.startsWith("data:")
+          ) {
+            continue
+          }
+
+          const jsonText =
+            line.slice(5).trim()
+
+          if (!jsonText) continue
+
+          try {
+            const payload =
+              JSON.parse(jsonText)
+
+            if (
+              payload?.type ===
+                "chunk" &&
+              typeof payload.content ===
+                "string" &&
+              payload.content
+            ) {
+              onChunk(
+                payload.content
+              )
+            }
+
+            if (
+              payload?.type === "done"
+            ) {
+              completed = true
+
+              if (
+                typeof payload.remaining ===
+                  "number"
+              ) {
+                setRemainingMessages(
+                  Math.max(
+                    0,
+                    payload.remaining
+                  )
+                )
+              }
+
+              onDone({
+                answer:
+                  payload.answer || "",
+                image:
+                  payload.image || null,
+                remaining:
+                  payload.remaining,
+              })
+            }
+
+            if (
+              payload?.type === "error"
+            ) {
+              throw new Error(
+                payload.error ||
+                  "The AI response could not be streamed."
+              )
+            }
+          } catch (parseError) {
+            if (
+              parseError instanceof Error &&
+              parseError.message ===
+                "The AI response could not be streamed."
+            ) {
+              throw parseError
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    if (!completed) {
+      throw new Error(
+        "The AI stream ended before the response was complete."
+      )
+    }
   }
 
   /*
@@ -822,6 +1084,7 @@ function ChatApp() {
     }
 
     setLoading(true)
+    setIsStreaming(false)
 
     /*
      * Show user message immediately.
@@ -840,26 +1103,112 @@ function ChatApp() {
       temporaryUserMessage,
     ])
 
+    let assistantId = null
+    let fullAnswer = ""
+    let assistantImage = null
+    let streamCompleted = false
+    let firstChunkReceived = false
+
     try {
       /*
-       * Ask backend FIRST.
+       * Create an empty assistant message before the first
+       * chunk so the same message bubble can be updated as
+       * the response arrives.
        */
-      const data =
-        await askBackend(
-          cleanText,
-          image
-        )
+      assistantId =
+        `assistant-${Date.now()}`
 
-      const answer =
-        data?.answer ||
-        data?.reply ||
-        data?.response ||
-        data?.message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          image: null,
+        },
+      ])
+
+      await askBackend(
+        cleanText,
+        image,
+        (chunk) => {
+          if (!chunk) return
+
+          /*
+           * The first chunk switches the typing indicator
+           * off, while loading remains true so the input and
+           * chat controls stay locked during streaming.
+           */
+          if (!firstChunkReceived) {
+            firstChunkReceived = true
+            setIsStreaming(true)
+          }
+
+          fullAnswer += chunk
+
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    content:
+                      fullAnswer,
+                  }
+                : message
+            )
+          )
+        },
+        (result) => {
+          streamCompleted = true
+
+          if (
+            typeof result?.remaining ===
+              "number"
+          ) {
+            setRemainingMessages(
+              Math.max(
+                0,
+                result.remaining
+              )
+            )
+          }
+
+          if (
+            typeof result?.answer ===
+              "string" &&
+            result.answer
+          ) {
+            /*
+             * Use the server's completed answer as the final
+             * source of truth. This also protects against any
+             * unusual chunk boundary behavior.
+             */
+            fullAnswer =
+              result.answer
+          }
+
+          assistantImage =
+            result?.image || null
+
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    content:
+                      fullAnswer,
+                    image:
+                      assistantImage,
+                  }
+                : message
+            )
+          )
+        }
+      )
 
       if (
-        typeof answer !==
-          "string" ||
-        !answer.trim()
+        !streamCompleted ||
+        !fullAnswer.trim()
       ) {
         throw new Error(
           "API returned no AI answer."
@@ -867,14 +1216,12 @@ function ChatApp() {
       }
 
       const cleanAnswer =
-        answer.trim()
-
-      const assistantImage =
-        data?.image || null
+        fullAnswer.trim()
 
       /*
-       * Create chat only after
-       * backend accepts request.
+       * Create chat only after the backend has successfully
+       * completed the AI response. This preserves the current
+       * behavior of avoiding empty chats after API failures.
        */
       let chatId =
         activeChat
@@ -886,12 +1233,11 @@ function ChatApp() {
               "Image conversation"
           )
 
-        chatId =
-          chat.id
+        chatId = chat.id
       }
 
       /*
-       * Save USER message.
+       * Save USER message exactly once.
        */
       await saveMessage(
         chatId,
@@ -901,24 +1247,25 @@ function ChatApp() {
       )
 
       /*
-       * Show AI response.
+       * Ensure the final streamed assistant message has the
+       * trimmed content used for persistence.
        */
-      setMessages((prev) => [
-        ...prev,
-        {
-          id:
-            `assistant-${Date.now()}`,
-          role:
-            "assistant",
-          content:
-            cleanAnswer,
-          image:
-            assistantImage,
-        },
-      ])
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                content:
+                  cleanAnswer,
+                image:
+                  assistantImage,
+              }
+            : message
+        )
+      )
 
       /*
-       * Save AI response.
+       * Save the COMPLETE AI response once the stream ends.
        */
       await saveMessage(
         chatId,
@@ -936,6 +1283,19 @@ function ChatApp() {
         "Chat error:",
         error
       )
+
+      /*
+       * Remove the empty/partial assistant bubble when the
+       * stream fails before a complete response is available.
+       */
+      if (assistantId) {
+        setMessages((prev) =>
+          prev.filter(
+            (message) =>
+              message.id !== assistantId
+          )
+        )
+      }
 
       /*
        * RATE LIMIT ERROR
@@ -1015,6 +1375,7 @@ function ChatApp() {
       ])
     } finally {
       setLoading(false)
+      setIsStreaming(false)
     }
   }
 
@@ -1235,7 +1596,7 @@ function ChatApp() {
                 </motion.div>
               )}
 
-              {loading && (
+              {loading && !isStreaming && (
                 <motion.div
                   className="typing-row"
                   initial={{
