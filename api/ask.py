@@ -15,7 +15,7 @@ MAX_REQUEST_SIZE = 8 * 1024 * 1024
 MAX_QUESTION_LENGTH = 12000
 
 # Maximum messages allowed per user in one hour
-MESSAGE_LIMIT = 20
+MESSAGE_LIMIT = 100
 
 
 # =========================================================

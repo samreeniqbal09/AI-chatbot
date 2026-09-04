@@ -148,9 +148,13 @@ function ChatApp() {
     useState(MESSAGE_LIMIT)
 
   /*
-   * Used to identify the currently active UI conversation.
-   * This prevents an old response from switching the user
-   * back into an old chat after they click New Chat.
+   * Conversation token.
+   *
+   * Every time the user starts/selects/deletes a chat,
+   * this number changes.
+   *
+   * A previous stream is therefore prevented from
+   * modifying the newly selected conversation.
    */
   const conversationRef = useRef(0)
 
@@ -228,7 +232,11 @@ function ChatApp() {
       behavior: "smooth",
       block: "end",
     })
-  }, [messages, loading, isStreaming])
+  }, [
+    messages,
+    loading,
+    isStreaming,
+  ])
 
   /*
    * MOBILE SIDEBAR
@@ -302,6 +310,10 @@ function ChatApp() {
         return
       }
 
+      /*
+       * Invalidate any currently running
+       * conversation.
+       */
       conversationRef.current += 1
 
       setMessages([])
@@ -426,6 +438,12 @@ function ChatApp() {
       return
     }
 
+    /*
+     * Selecting another chat invalidates
+     * any previous stream.
+     */
+    conversationRef.current += 1
+
     try {
       const {
         data: chat,
@@ -466,8 +484,6 @@ function ChatApp() {
         throw error
       }
 
-      conversationRef.current += 1
-
       setMessages(
         (data || []).map(
           parseMessage
@@ -475,6 +491,7 @@ function ChatApp() {
       )
 
       setActiveChat(chatId)
+      setIsStreaming(false)
 
       if (
         window.innerWidth <
@@ -492,12 +509,12 @@ function ChatApp() {
 
   /*
    * NEW CHAT
-   *
-   * This no longer depends on loading.
-   * Once the response has appeared, the user can
-   * immediately start a new conversation.
    */
   const handleNewChat = () => {
+    /*
+     * Immediately invalidate any existing
+     * streaming conversation.
+     */
     conversationRef.current += 1
 
     setMessages([])
@@ -553,8 +570,10 @@ function ChatApp() {
         activeChat === chatId
       ) {
         conversationRef.current += 1
+
         setMessages([])
         setActiveChat(null)
+        setIsStreaming(false)
       }
     } catch (error) {
       console.error(
@@ -1103,7 +1122,11 @@ function ChatApp() {
     }
 
     /*
-     * Every send gets its own conversation token.
+     * Capture the current conversation.
+     *
+     * If the user later clicks New Chat or selects
+     * another chat, conversationRef.current changes
+     * and this stream becomes stale.
      */
     const conversationId =
       conversationRef.current
@@ -1134,26 +1157,41 @@ function ChatApp() {
     let streamCompleted = false
     let firstChunkReceived = false
 
+    /*
+     * Check whether this stream still belongs
+     * to the currently visible conversation.
+     */
+    const isCurrentConversation = () =>
+      conversationRef.current ===
+      conversationId
+
     try {
-      /*
-       * IMPORTANT:
-       * Do NOT create an empty assistant message here.
-       *
-       * The assistant bubble is created only when the
-       * first real streaming chunk arrives.
-       *
-       * This removes the duplicate Lumora avatar/bubble.
-       */
       await askBackend(
         cleanText,
         image,
         (chunk) => {
-          if (!chunk) return
+          if (
+            !chunk ||
+            !isCurrentConversation()
+          ) {
+            /*
+             * The backend continues safely, but
+             * this old stream is no longer allowed
+             * to update the current UI.
+             */
+            if (chunk) {
+              fullAnswer += chunk
+            }
+
+            return
+          }
 
           /*
            * First chunk:
-           * remove typing indicator and create the
-           * actual assistant message.
+           *
+           * - remove typing indicator
+           * - create assistant bubble
+           * - display first chunk
            */
           if (!firstChunkReceived) {
             firstChunkReceived = true
@@ -1173,6 +1211,9 @@ function ChatApp() {
               },
             ])
           } else {
+            /*
+             * Append every new chunk.
+             */
             setMessages((prev) =>
               prev.map(
                 (message) =>
@@ -1207,8 +1248,8 @@ function ChatApp() {
           }
 
           /*
-           * Server's completed answer is the
-           * final source of truth.
+           * Always use the backend's final
+           * completed answer as the source of truth.
            */
           if (
             typeof result?.answer ===
@@ -1223,9 +1264,23 @@ function ChatApp() {
             result?.image || null
 
           /*
-           * Some responses could theoretically contain
-           * a final answer without a chunk.
-           * Create the assistant message in that case.
+           * If the user has moved to another
+           * conversation, don't touch its UI.
+           *
+           * We still allow the current function
+           * to finish safely.
+           */
+          if (
+            !isCurrentConversation()
+          ) {
+            setLoading(false)
+            setIsStreaming(false)
+            return
+          }
+
+          /*
+           * Some responses may contain a final
+           * answer without receiving a chunk.
            */
           if (!assistantId) {
             assistantId =
@@ -1261,11 +1316,9 @@ function ChatApp() {
           }
 
           /*
-           * IMPORTANT:
-           * The AI response is complete.
+           * The AI has finished generating.
            *
-           * Unlock the input immediately instead of
-           * waiting for Supabase saves/sidebar refresh.
+           * Unlock the input immediately.
            */
           setLoading(false)
           setIsStreaming(false)
@@ -1285,15 +1338,25 @@ function ChatApp() {
         fullAnswer.trim()
 
       /*
-       * Capture the chat that this message belongs to.
+       * If the user switched conversations
+       * while the stream was running, don't save
+       * this response into the newly selected chat.
+       */
+      if (
+        !isCurrentConversation()
+      ) {
+        return
+      }
+
+      /*
+       * Capture the chat this message belongs to.
        */
       let chatId = activeChat
 
       if (!chatId) {
         /*
-         * Do not automatically activate an old response's
-         * newly-created chat if the user has already clicked
-         * New Chat.
+         * Only activate the newly-created chat
+         * if the user is still in the same conversation.
          */
         const shouldActivate =
           conversationRef.current ===
@@ -1310,6 +1373,16 @@ function ChatApp() {
       }
 
       /*
+       * Make sure the user didn't switch chats
+       * while the Supabase request was running.
+       */
+      if (
+        !isCurrentConversation()
+      ) {
+        return
+      }
+
+      /*
        * Save USER message exactly once.
        */
       await saveMessage(
@@ -1320,23 +1393,35 @@ function ChatApp() {
       )
 
       /*
+       * Make sure the conversation wasn't
+       * changed during the save.
+       */
+      if (
+        !isCurrentConversation()
+      ) {
+        return
+      }
+
+      /*
        * Update visible assistant message.
        */
-      setMessages((prev) =>
-        prev.map(
-          (message) =>
-            message.id ===
-              assistantId
-              ? {
-                  ...message,
-                  content:
-                    cleanAnswer,
-                  image:
-                    assistantImage,
-                }
-              : message
+      if (assistantId) {
+        setMessages((prev) =>
+          prev.map(
+            (message) =>
+              message.id ===
+                assistantId
+                ? {
+                    ...message,
+                    content:
+                      cleanAnswer,
+                    image:
+                      assistantImage,
+                  }
+                : message
+          )
         )
-      )
+      }
 
       /*
        * Save COMPLETE AI response exactly once.
@@ -1349,9 +1434,14 @@ function ChatApp() {
       )
 
       /*
-       * Refresh sidebar without locking the input.
+       * Refresh sidebar only if the user
+       * is still viewing the same conversation.
        */
-      await loadChats()
+      if (
+        isCurrentConversation()
+      ) {
+        await loadChats()
+      }
     } catch (error) {
       console.error(
         "Chat error:",
@@ -1359,8 +1449,18 @@ function ChatApp() {
       )
 
       /*
-       * Only remove the streamed assistant bubble if
-       * the conversation is still the active conversation.
+       * If this stream belongs to an old
+       * conversation, do not show its error
+       * inside the new conversation.
+       */
+      if (
+        !isCurrentConversation()
+      ) {
+        return
+      }
+
+      /*
+       * Remove partial assistant response.
        */
       if (assistantId) {
         setMessages((prev) =>
@@ -1450,10 +1550,7 @@ function ChatApp() {
       ])
     } finally {
       /*
-       * Always unlock the UI after the request.
-       *
-       * The onDone callback already unlocks it immediately
-       * when the AI finishes, so this is simply a safety net.
+       * Always unlock the UI.
        */
       setLoading(false)
       setIsStreaming(false)
@@ -1469,35 +1566,27 @@ function ChatApp() {
       <Sidebar
         chats={chats}
         activeChat={activeChat}
-
         onNewChat={
           handleNewChat
         }
-
         onSelectChat={
           loadMessages
         }
-
         onDeleteChat={
           deleteChat
         }
-
         onRenameChat={
           renameChat
         }
-
         onLogout={
           handleLogout
         }
-
         sidebarOpen={
           sidebarOpen
         }
-
         setSidebarOpen={
           setSidebarOpen
         }
-
         darkMode={
           darkMode
         }
@@ -1677,6 +1766,16 @@ function ChatApp() {
                 </motion.div>
               )}
 
+              /*
+               * IMPORTANT:
+               * Typing indicator is shown only
+               * while waiting for the FIRST
+               * streaming chunk.
+               *
+               * Once the first chunk arrives,
+               * isStreaming becomes true and
+               * this indicator disappears.
+               */
               {loading &&
                 !isStreaming && (
                   <motion.div

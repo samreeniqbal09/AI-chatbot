@@ -10,11 +10,11 @@ import LumoraWordmark from "./logo/LumoraWordmark"
 function LandingPage({ onGetStarted }) {
   return (
     <div className="lumora-landing">
-      {/* Navbar */}
+      {/* ==================== NAVBAR ==================== */}
       <nav className="landing-navbar">
-        <a href="#top" className="landing-brand">
+        <a href="#top" className="landing-brand" aria-label="Lumora AI home">
           <LumoraWordmark
-            iconSize={32}
+            iconSize={34}
             textSize="text-lg"
             className="text-zinc-900 dark:text-white"
           />
@@ -43,41 +43,59 @@ function LandingPage({ onGetStarted }) {
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* ==================== HERO ==================== */}
       <header id="top" className="landing-hero">
         <div className="landing-hero-content">
+          {/* Hero Logo */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="landing-hero-logo"
+          >
+            <LumoraWordmark
+              iconSize={72}
+              textSize="text-3xl"
+              className="text-zinc-900 dark:text-white"
+            />
+          </motion.div>
+
+          {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
+            transition={{ duration: 0.45, delay: 0.05 }}
             className="landing-badge"
           >
             <span className="landing-badge-dot" />
             Simple. Smart. Lumora.
           </motion.div>
 
+          {/* Heading */}
           <motion.h1
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
           >
             Your ideas, <span>powered by AI.</span>
           </motion.h1>
 
+          {/* Description */}
           <motion.p
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
             className="landing-hero-description"
           >
             Ask questions, explore ideas, write code, solve problems, and
             learn something new with your intelligent AI assistant.
           </motion.p>
 
+          {/* Hero Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             className="landing-hero-actions"
           >
             <button
@@ -98,11 +116,11 @@ function LandingPage({ onGetStarted }) {
             </button>
           </motion.div>
 
-          {/* Chat Preview */}
+          {/* ==================== CHAT PREVIEW ==================== */}
           <motion.div
             initial={{ opacity: 0, y: 30, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.55, delay: 0.2 }}
+            transition={{ duration: 0.55, delay: 0.25 }}
             className="landing-chat-preview"
           >
             <div className="landing-chat-window">
@@ -113,8 +131,16 @@ function LandingPage({ onGetStarted }) {
                   <span />
                 </div>
 
-                <span className="landing-chat-title">
-                  Lumora AI · Online
+                <div className="landing-chat-brand">
+                  <LumoraWordmark
+                    iconSize={20}
+                    textSize="text-sm"
+                    className="text-zinc-900 dark:text-white"
+                  />
+                </div>
+
+                <span className="landing-chat-status">
+                  Online
                 </span>
               </div>
 
@@ -133,7 +159,7 @@ function LandingPage({ onGetStarted }) {
         </div>
       </header>
 
-      {/* Features */}
+      {/* ==================== FEATURES ==================== */}
       <section id="features" className="landing-section">
         <div className="landing-section-inner">
           <motion.div
@@ -176,7 +202,10 @@ function LandingPage({ onGetStarted }) {
                 initial={{ opacity: 0, y: 22 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.4 }}
-                transition={{ duration: 0.45, delay: index * 0.08 }}
+                transition={{
+                  duration: 0.45,
+                  delay: index * 0.08,
+                }}
               >
                 <Feature
                   icon={feature.icon}
@@ -189,7 +218,7 @@ function LandingPage({ onGetStarted }) {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ==================== CTA ==================== */}
       <motion.section
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -216,7 +245,7 @@ function LandingPage({ onGetStarted }) {
         </div>
       </motion.section>
 
-      {/* Footer */}
+      {/* ==================== FOOTER ==================== */}
       <footer className="landing-footer">
         <div className="landing-footer-inner">
           <p>© 2026 Lumora AI. All rights reserved.</p>
@@ -226,11 +255,17 @@ function LandingPage({ onGetStarted }) {
   )
 }
 
+/* ==================== FEATURE CARD ==================== */
+
 function Feature({ icon, title, text }) {
   return (
     <div className="landing-feature-card">
-      <div className="landing-feature-icon">{icon}</div>
+      <div className="landing-feature-icon">
+        {icon}
+      </div>
+
       <h3>{title}</h3>
+
       <p>{text}</p>
     </div>
   )

@@ -72,7 +72,9 @@ export default function AuthPage({ onBack }) {
         )
       }
     } catch (err) {
-      setError(err?.message || "Something went wrong.")
+      setError(
+        err?.message || "Something went wrong."
+      )
     } finally {
       setLoading(false)
     }
@@ -96,6 +98,7 @@ export default function AuthPage({ onBack }) {
           duration: 0.4,
         }}
       >
+
         {/* BACK TO LANDING */}
 
         {onBack && (
@@ -109,13 +112,18 @@ export default function AuthPage({ onBack }) {
           </button>
         )}
 
+        {/* LARGE LUMORA LOGO */}
+
+        <div className="text-center">
+          <LumoraIcon
+            size={72}
+            className="mx-auto mb-4"
+          />
+        </div>
+
         {/* BRAND */}
 
         <div className="lumora-auth-brand">
-          <div className="lumora-auth-brand-icon">
-            <LumoraIcon size={42} />
-          </div>
-
           <div className="lumora-auth-brand-copy">
             <div className="lumora-auth-brand-name">
               Lumora AI
@@ -130,6 +138,7 @@ export default function AuthPage({ onBack }) {
         {/* CARD */}
 
         <section className="lumora-auth-card">
+
           {/* FORGOT PASSWORD */}
 
           {isForgot ? (
@@ -270,6 +279,7 @@ export default function AuthPage({ onBack }) {
                 className="lumora-auth-form"
                 onSubmit={handleSubmit}
               >
+
                 {/* EMAIL */}
 
                 <div className="lumora-auth-field">
@@ -405,7 +415,7 @@ export default function AuthPage({ onBack }) {
               <div className="lumora-auth-bottom">
                 {isLogin ? (
                   <>
-                    New to Lumora AI?{" "}
+                    New to Lumora AI{" "}
                     <button
                       type="button"
                       onClick={() =>
@@ -438,6 +448,7 @@ export default function AuthPage({ onBack }) {
         <div className="lumora-auth-footer">
           Secure authentication powered by Supabase
         </div>
+
       </motion.div>
     </main>
   )
