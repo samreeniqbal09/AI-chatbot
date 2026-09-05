@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { motion } from "motion/react"
 import {
-  Bot,
   User,
   Copy,
   Check,
@@ -9,6 +8,7 @@ import {
 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import LumoraIcon from "./logo/LumoraIcon"
 
 function CodeBlock({ children, className }) {
   const [copied, setCopied] = useState(false)
@@ -89,7 +89,7 @@ function ChatMessage({ message }) {
           animate={{ scale: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <Bot size={16} />
+          <LumoraIcon size={20} />
         </motion.div>
       )}
 

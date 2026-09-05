@@ -1698,7 +1698,7 @@ function ChatApp() {
                   opacity: 1,
                 }}
               >
-                <Sparkles size={27} />
+                <LumoraIcon size={40} />
               </motion.div>
 
               <h1>
@@ -1766,16 +1766,16 @@ function ChatApp() {
                 </motion.div>
               )}
 
-              /*
-               * IMPORTANT:
-               * Typing indicator is shown only
-               * while waiting for the FIRST
-               * streaming chunk.
-               *
-               * Once the first chunk arrives,
-               * isStreaming becomes true and
-               * this indicator disappears.
-               */
+              {/*
+                IMPORTANT:
+                Typing indicator is shown only
+                while waiting for the FIRST
+                streaming chunk.
+
+                Once the first chunk arrives,
+                isStreaming becomes true and
+                this indicator disappears.
+              */}
               {loading &&
                 !isStreaming && (
                   <motion.div
@@ -1790,7 +1790,7 @@ function ChatApp() {
                     }}
                   >
                     <div className="typing-avatar">
-                      <Sparkles size={14} />
+                      <LumoraIcon size={16} />
                     </div>
 
                     <div className="typing-indicator">
