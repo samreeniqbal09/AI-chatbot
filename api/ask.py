@@ -475,22 +475,14 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             # -------------------------------------------------
-            # START OPENROUTER STREAM
-            # -------------------------------------------------
-
-            stream = client.chat.completions.create(
-                model="qwen/qwen3.7-flash",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": content,
-                    }
-                ],
-                stream=True,
-            )
-
-            # -------------------------------------------------
             # SSE HEADERS
+            # -------------------------------------------------
+            #
+            # Send the streaming headers BEFORE contacting
+            # OpenRouter. This lets the browser establish the
+            # SSE connection immediately and also means any
+            # OpenRouter failure can be returned as an SSE error
+            # instead of being converted into a generic JSON 500.
             # -------------------------------------------------
 
             self.send_response(200)
@@ -515,11 +507,38 @@ class handler(BaseHTTPRequestHandler):
                 "no"
             )
 
+            self.send_header(
+                "X-Content-Type-Options",
+                "nosniff"
+            )
+
             self.send_cors_headers()
 
             self.end_headers()
 
             stream_started = True
+
+            # Initial SSE comment helps establish and flush the
+            # connection before the model starts generating.
+            self.wfile.write(
+                b": connected\n\n"
+            )
+            self.wfile.flush()
+
+            # -------------------------------------------------
+            # START OPENROUTER STREAM
+            # -------------------------------------------------
+
+            stream = client.chat.completions.create(
+                model="qwen/qwen3.7-flash",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                stream=True,
+            )
 
             # -------------------------------------------------
             # STREAM CHUNKS
