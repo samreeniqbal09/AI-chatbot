@@ -14,6 +14,7 @@
 
 export default function LumoraWordmark({
   height = 40,
+  radius = 10,
   className = "",
   ...props
 }) {
@@ -27,6 +28,8 @@ export default function LumoraWordmark({
         objectFit: "contain",
         width: "auto",
         height: `${height}px`,
+        borderRadius: `${radius}px`,
+        overflow: "hidden",
       }}
       {...props}
     />

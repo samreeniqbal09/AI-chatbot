@@ -324,7 +324,7 @@ function Sidebar({
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.96 }}
-              className="shrink-0"
+              className="brand-icon shrink-0"
             >
               <LumoraIcon size={36} />
             </motion.div>
