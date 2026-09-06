@@ -71,9 +71,6 @@ function App() {
     }
   }, [])
 
-  /*
-   * AUTH LOADING
-   */
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -84,9 +81,6 @@ function App() {
     )
   }
 
-  /*
-   * PASSWORD RESET
-   */
   if (isRecovery) {
     return (
       <ResetPasswordPage
@@ -95,16 +89,10 @@ function App() {
     )
   }
 
-  /*
-   * LOGGED-IN USER
-   */
   if (user) {
     return <ChatApp />
   }
 
-  /*
-   * LANDING PAGE
-   */
   if (!showAuth) {
     return (
       <LandingPage
@@ -115,9 +103,6 @@ function App() {
     )
   }
 
-  /*
-   * LOGIN / SIGN UP
-   */
   return (
     <AuthPage
       onBack={() => {
@@ -182,7 +167,10 @@ function ChatApp() {
    * LOAD CHATS
    */
   const loadChats = useCallback(async () => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setChats([])
+      return
+    }
 
     try {
       const {
@@ -201,11 +189,18 @@ function ChatApp() {
       }
 
       setChats(data || [])
+
+      console.log(
+        "Lumora: chats loaded:",
+        data?.length || 0
+      )
     } catch (error) {
       console.error(
-        "Load chats:",
+        "Lumora: Load chats failed:",
         error
       )
+
+      setChats([])
     }
   }, [user?.id])
 
@@ -289,9 +284,15 @@ function ChatApp() {
 
       if (error) {
         console.error(
-          "Logout error:",
+          "Lumora: Logout error:",
           error
         )
+
+        alert(
+          error.message ||
+          "Unable to log out."
+        )
+
         return
       }
 
@@ -306,8 +307,13 @@ function ChatApp() {
       )
     } catch (error) {
       console.error(
-        "Logout error:",
+        "Lumora: Logout error:",
         error
+      )
+
+      alert(
+        error?.message ||
+        "Unable to log out."
       )
     }
   }
@@ -342,13 +348,13 @@ function ChatApp() {
 
     if (error) {
       console.error(
-        "Create chat:",
+        "Lumora: Create chat failed:",
         error
       )
 
       throw new Error(
         error.message ||
-          "Unable to create chat."
+        "Unable to create chat."
       )
     }
 
@@ -404,83 +410,114 @@ function ChatApp() {
   /*
    * LOAD MESSAGES
    */
-  const loadMessages = async (
-    chatId
-  ) => {
-    if (
-      !chatId ||
-      !user?.id
-    ) {
-      return
-    }
-
-    try {
-      const {
-        data: chat,
-        error: chatError,
-      } = await supabase
-        .from("chat_sessions")
-        .select("id")
-        .eq("id", chatId)
-        .eq("user_id", user.id)
-        .maybeSingle()
-
-      if (chatError) {
-        throw chatError
-      }
-
-      if (!chat) {
-        console.error(
-          "Chat does not belong to current user."
-        )
+  const loadMessages = useCallback(
+    async (chatId) => {
+      if (
+        !chatId ||
+        !user?.id
+      ) {
         return
       }
 
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("chat_messages")
-        .select("*")
-        .eq(
-          "session_id",
+      if (loading) {
+        return
+      }
+
+      try {
+        console.log(
+          "Lumora: loading chat:",
           chatId
         )
-        .order("created_at", {
-          ascending: true,
-        })
 
-      if (error) {
-        throw error
-      }
+        /*
+         * Verify ownership.
+         */
+        const {
+          data: chat,
+          error: chatError,
+        } = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .eq("id", chatId)
+          .eq("user_id", user.id)
+          .maybeSingle()
 
-      setMessages(
-        (data || []).map(
-          parseMessage
+        if (chatError) {
+          throw chatError
+        }
+
+        if (!chat) {
+          throw new Error(
+            "This chat could not be found."
+          )
+        }
+
+        /*
+         * Load messages.
+         */
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .eq(
+            "session_id",
+            chatId
+          )
+          .order("created_at", {
+            ascending: true,
+          })
+
+        if (error) {
+          throw error
+        }
+
+        setMessages(
+          (data || []).map(
+            parseMessage
+          )
         )
-      )
 
-      setActiveChat(chatId)
+        setActiveChat(chatId)
 
-      if (
-        window.innerWidth <
-        MOBILE_BREAKPOINT
-      ) {
-        setSidebarOpen(false)
+        console.log(
+          "Lumora: chat loaded:",
+          chatId,
+          "messages:",
+          data?.length || 0
+        )
+
+        if (
+          window.innerWidth <
+          MOBILE_BREAKPOINT
+        ) {
+          setSidebarOpen(false)
+        }
+      } catch (error) {
+        console.error(
+          "Lumora: Load messages failed:",
+          error
+        )
+
+        alert(
+          error?.message ||
+          "Unable to load this chat."
+        )
       }
-    } catch (error) {
-      console.error(
-        "Load messages:",
-        error
-      )
-    }
-  }
+    },
+    [user?.id, loading]
+  )
 
   /*
    * NEW CHAT
    */
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     if (loading) return
+
+    console.log(
+      "Lumora: New Chat clicked"
+    )
 
     setMessages([])
     setActiveChat(null)
@@ -492,118 +529,279 @@ function ChatApp() {
     ) {
       setSidebarOpen(false)
     }
-  }
+  }, [loading])
 
   /*
    * DELETE CHAT
+   *
+   * IMPORTANT:
+   * Delete messages first.
+   * This avoids foreign-key problems when
+   * chat_messages.session_id references
+   * chat_sessions.id without ON DELETE CASCADE.
    */
-  const deleteChat = async (
-    chatId
-  ) => {
-    if (
-      !chatId ||
-      loading ||
-      !user?.id
-    ) {
-      return
-    }
-
-    try {
-      const {
-        error,
-      } = await supabase
-        .from("chat_sessions")
-        .delete()
-        .eq("id", chatId)
-        .eq(
-          "user_id",
-          user.id
-        )
-
-      if (error) {
-        throw error
-      }
-
-      setChats((prev) =>
-        prev.filter(
-          (chat) =>
-            chat.id !== chatId
-        )
-      )
-
+  const deleteChat = useCallback(
+    async (chatId) => {
       if (
-        activeChat === chatId
+        !chatId ||
+        loading ||
+        !user?.id
       ) {
-        setMessages([])
-        setActiveChat(null)
+        return
       }
-    } catch (error) {
-      console.error(
-        "Delete chat:",
-        error
-      )
-    }
-  }
+
+      const confirmed =
+        window.confirm(
+          "Delete this chat? This cannot be undone."
+        )
+
+      if (!confirmed) {
+        return
+      }
+
+      try {
+        console.log(
+          "Lumora: deleting chat:",
+          chatId
+        )
+
+        /*
+         * Verify ownership first.
+         */
+        const {
+          data: chat,
+          error: chatCheckError,
+        } = await supabase
+          .from("chat_sessions")
+          .select("id")
+          .eq("id", chatId)
+          .eq("user_id", user.id)
+          .maybeSingle()
+
+        if (chatCheckError) {
+          throw chatCheckError
+        }
+
+        if (!chat) {
+          throw new Error(
+            "Chat not found or you do not have access to it."
+          )
+        }
+
+        /*
+         * Delete messages first.
+         */
+        const {
+          error: messagesError,
+        } = await supabase
+          .from("chat_messages")
+          .delete()
+          .eq(
+            "session_id",
+            chatId
+          )
+
+        if (messagesError) {
+          throw messagesError
+        }
+
+        /*
+         * Delete chat session.
+         */
+        const {
+          error: chatError,
+        } = await supabase
+          .from("chat_sessions")
+          .delete()
+          .eq("id", chatId)
+          .eq(
+            "user_id",
+            user.id
+          )
+
+        if (chatError) {
+          throw chatError
+        }
+
+        /*
+         * Update UI immediately.
+         */
+        setChats((prev) =>
+          prev.filter(
+            (chatItem) =>
+              chatItem.id !==
+              chatId
+          )
+        )
+
+        if (
+          activeChat === chatId
+        ) {
+          setMessages([])
+          setActiveChat(null)
+        }
+
+        /*
+         * Re-sync with Supabase.
+         */
+        await loadChats()
+
+        console.log(
+          "Lumora: chat deleted successfully"
+        )
+      } catch (error) {
+        console.error(
+          "Lumora: Delete chat failed:",
+          error
+        )
+
+        alert(
+          "Unable to delete this chat.\n\n" +
+          (
+            error?.message ||
+            "Please try again."
+          )
+        )
+
+        /*
+         * Re-sync in case the database
+         * operation partially succeeded.
+         */
+        await loadChats()
+      }
+    },
+    [
+      activeChat,
+      loading,
+      user?.id,
+      loadChats,
+    ]
+  )
 
   /*
    * RENAME CHAT
    */
-  const renameChat = async (
-    chatId,
-    newTitle
-  ) => {
-    const title =
+  const renameChat = useCallback(
+    async (
+      chatId,
       newTitle
-        ?.trim()
-        .slice(0, 60)
+    ) => {
+      const title =
+        newTitle
+          ?.trim()
+          .slice(0, 60)
 
-    if (
-      !chatId ||
-      !title ||
-      loading ||
-      !user?.id
-    ) {
-      return
-    }
-
-    try {
-      const {
-        error,
-      } = await supabase
-        .from("chat_sessions")
-        .update({
-          title,
-        })
-        .eq(
-          "id",
-          chatId
-        )
-        .eq(
-          "user_id",
-          user.id
-        )
-
-      if (error) {
-        throw error
+      if (
+        !chatId ||
+        !title ||
+        loading ||
+        !user?.id
+      ) {
+        return
       }
 
-      setChats((prev) =>
-        prev.map((chat) =>
-          chat.id === chatId
-            ? {
-                ...chat,
-                title,
-              }
-            : chat
+      try {
+        console.log(
+          "Lumora: renaming chat:",
+          chatId,
+          title
         )
-      )
-    } catch (error) {
-      console.error(
-        "Rename chat:",
-        error
-      )
-    }
-  }
+
+        /*
+         * Verify ownership.
+         */
+        const {
+          data: chat,
+          error: checkError,
+        } = await supabase
+          .from("chat_sessions")
+          .select("id")
+          .eq("id", chatId)
+          .eq(
+            "user_id",
+            user.id
+          )
+          .maybeSingle()
+
+        if (checkError) {
+          throw checkError
+        }
+
+        if (!chat) {
+          throw new Error(
+            "Chat not found or you do not have access to it."
+          )
+        }
+
+        /*
+         * Update title.
+         */
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("chat_sessions")
+          .update({
+            title,
+          })
+          .eq("id", chatId)
+          .eq(
+            "user_id",
+            user.id
+          )
+          .select()
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        /*
+         * Update sidebar immediately.
+         */
+        setChats((prev) =>
+          prev.map((chatItem) =>
+            chatItem.id === chatId
+              ? {
+                  ...chatItem,
+                  ...data,
+                  title,
+                }
+              : chatItem
+          )
+        )
+
+        /*
+         * Re-sync.
+         */
+        await loadChats()
+
+        console.log(
+          "Lumora: chat renamed successfully"
+        )
+      } catch (error) {
+        console.error(
+          "Lumora: Rename chat failed:",
+          error
+        )
+
+        alert(
+          "Unable to rename this chat.\n\n" +
+          (
+            error?.message ||
+            "Please try again."
+          )
+        )
+
+        await loadChats()
+      }
+    },
+    [
+      loading,
+      user?.id,
+      loadChats,
+    ]
+  )
 
   /*
    * SAVE MESSAGE
@@ -672,13 +870,13 @@ function ChatApp() {
 
     if (error) {
       console.error(
-        "Save message:",
+        "Lumora: Save message failed:",
         error
       )
 
       throw new Error(
         error.message ||
-          "Unable to save message."
+        "Unable to save message."
       )
     }
   }
@@ -733,11 +931,6 @@ function ChatApp() {
         }
       )
 
-    /*
-     * The backend sends normal JSON for errors such as
-     * authentication/rate limiting, so read those responses
-     * before attempting to consume the stream.
-     */
     if (!response.ok) {
       const responseText =
         await response.text()
@@ -745,14 +938,11 @@ function ChatApp() {
       let data = null
 
       try {
-        data = JSON.parse(responseText)
-      } catch {
-        // Keep the original response text.
-      }
+        data = JSON.parse(
+          responseText
+        )
+      } catch {}
 
-      /*
-       * RATE LIMIT
-       */
       if (
         response.status === 429 ||
         data?.rate_limited === true
@@ -769,7 +959,7 @@ function ChatApp() {
         const limitError =
           new Error(
             data?.error ||
-              `You've reached your ${MESSAGE_LIMIT} message limit. Please try again in ${minutes} minutes.`
+            `You've reached your ${MESSAGE_LIMIT} message limit. Please try again in ${minutes} minutes.`
           )
 
         limitError.isRateLimit = true
@@ -779,9 +969,9 @@ function ChatApp() {
 
       throw new Error(
         data?.error ||
-          data?.message ||
-          responseText ||
-          `API error ${response.status}`
+        data?.message ||
+        responseText ||
+        `API error ${response.status}`
       )
     }
 
@@ -801,17 +991,15 @@ function ChatApp() {
         "text/event-stream"
       )
     ) {
-      /*
-       * Safety fallback for an older deployment that may
-       * still return the original JSON response.
-       */
       const responseText =
         await response.text()
 
       let data = null
 
       try {
-        data = JSON.parse(responseText)
+        data = JSON.parse(
+          responseText
+        )
       } catch {
         throw new Error(
           "API returned an invalid response."
@@ -820,7 +1008,7 @@ function ChatApp() {
 
       if (
         typeof data?.remaining ===
-          "number"
+        "number"
       ) {
         setRemainingMessages(
           Math.max(
@@ -858,9 +1046,6 @@ function ChatApp() {
       return
     }
 
-    /*
-     * STREAMING RESPONSE
-     */
     const reader =
       response.body.getReader()
 
@@ -910,7 +1095,9 @@ function ChatApp() {
 
             try {
               payload =
-                JSON.parse(jsonText)
+                JSON.parse(
+                  jsonText
+                )
             } catch (parseError) {
               console.warn(
                 "Invalid SSE data:",
@@ -932,13 +1119,14 @@ function ChatApp() {
             }
 
             if (
-              payload?.type === "done"
+              payload?.type ===
+              "done"
             ) {
               completed = true
 
               if (
                 typeof payload.remaining ===
-                  "number"
+                "number"
               ) {
                 setRemainingMessages(
                   Math.max(
@@ -959,20 +1147,18 @@ function ChatApp() {
             }
 
             if (
-              payload?.type === "error"
+              payload?.type ===
+              "error"
             ) {
               throw new Error(
                 payload.error ||
-                  "The AI response could not be streamed."
+                "The AI response could not be streamed."
               )
             }
           }
         }
       }
 
-      /*
-       * Process any final bytes left in the decoder.
-       */
       buffer += decoder.decode()
 
       if (buffer.trim()) {
@@ -993,7 +1179,9 @@ function ChatApp() {
 
           try {
             const payload =
-              JSON.parse(jsonText)
+              JSON.parse(
+                jsonText
+              )
 
             if (
               payload?.type ===
@@ -1008,13 +1196,14 @@ function ChatApp() {
             }
 
             if (
-              payload?.type === "done"
+              payload?.type ===
+              "done"
             ) {
               completed = true
 
               if (
                 typeof payload.remaining ===
-                  "number"
+                "number"
               ) {
                 setRemainingMessages(
                   Math.max(
@@ -1035,11 +1224,12 @@ function ChatApp() {
             }
 
             if (
-              payload?.type === "error"
+              payload?.type ===
+              "error"
             ) {
               throw new Error(
                 payload.error ||
-                  "The AI response could not be streamed."
+                "The AI response could not be streamed."
               )
             }
           } catch (parseError) {
@@ -1086,9 +1276,6 @@ function ChatApp() {
     setLoading(true)
     setIsStreaming(false)
 
-    /*
-     * Show user message immediately.
-     */
     const temporaryUserMessage = {
       id:
         `user-${Date.now()}`,
@@ -1110,11 +1297,6 @@ function ChatApp() {
     let firstChunkReceived = false
 
     try {
-      /*
-       * Create an empty assistant message before the first
-       * chunk so the same message bubble can be updated as
-       * the response arrives.
-       */
       assistantId =
         `assistant-${Date.now()}`
 
@@ -1134,11 +1316,6 @@ function ChatApp() {
         (chunk) => {
           if (!chunk) return
 
-          /*
-           * The first chunk switches the typing indicator
-           * off, while loading remains true so the input and
-           * chat controls stay locked during streaming.
-           */
           if (!firstChunkReceived) {
             firstChunkReceived = true
             setIsStreaming(true)
@@ -1148,7 +1325,8 @@ function ChatApp() {
 
           setMessages((prev) =>
             prev.map((message) =>
-              message.id === assistantId
+              message.id ===
+              assistantId
                 ? {
                     ...message,
                     content:
@@ -1163,7 +1341,7 @@ function ChatApp() {
 
           if (
             typeof result?.remaining ===
-              "number"
+            "number"
           ) {
             setRemainingMessages(
               Math.max(
@@ -1178,11 +1356,6 @@ function ChatApp() {
               "string" &&
             result.answer
           ) {
-            /*
-             * Use the server's completed answer as the final
-             * source of truth. This also protects against any
-             * unusual chunk boundary behavior.
-             */
             fullAnswer =
               result.answer
           }
@@ -1192,7 +1365,8 @@ function ChatApp() {
 
           setMessages((prev) =>
             prev.map((message) =>
-              message.id === assistantId
+              message.id ===
+              assistantId
                 ? {
                     ...message,
                     content:
@@ -1218,26 +1392,25 @@ function ChatApp() {
       const cleanAnswer =
         fullAnswer.trim()
 
-      /*
-       * Create chat only after the backend has successfully
-       * completed the AI response. This preserves the current
-       * behavior of avoiding empty chats after API failures.
-       */
       let chatId =
         activeChat
 
+      /*
+       * Create chat only after
+       * successful AI response.
+       */
       if (!chatId) {
         const chat =
           await createChat(
             cleanText ||
-              "Image conversation"
+            "Image conversation"
           )
 
         chatId = chat.id
       }
 
       /*
-       * Save USER message exactly once.
+       * Save user message.
        */
       await saveMessage(
         chatId,
@@ -1246,13 +1419,10 @@ function ChatApp() {
         image
       )
 
-      /*
-       * Ensure the final streamed assistant message has the
-       * trimmed content used for persistence.
-       */
       setMessages((prev) =>
         prev.map((message) =>
-          message.id === assistantId
+          message.id ===
+          assistantId
             ? {
                 ...message,
                 content:
@@ -1265,7 +1435,7 @@ function ChatApp() {
       )
 
       /*
-       * Save the COMPLETE AI response once the stream ends.
+       * Save assistant message.
        */
       await saveMessage(
         chatId,
@@ -1280,26 +1450,20 @@ function ChatApp() {
       await loadChats()
     } catch (error) {
       console.error(
-        "Chat error:",
+        "Lumora: Chat error:",
         error
       )
 
-      /*
-       * Remove the empty/partial assistant bubble when the
-       * stream fails before a complete response is available.
-       */
       if (assistantId) {
         setMessages((prev) =>
           prev.filter(
             (message) =>
-              message.id !== assistantId
+              message.id !==
+              assistantId
           )
         )
       }
 
-      /*
-       * RATE LIMIT ERROR
-       */
       if (
         error?.isRateLimit ||
         error?.message
@@ -1326,9 +1490,6 @@ function ChatApp() {
         return
       }
 
-      /*
-       * AUTH ERROR
-       */
       if (
         error?.message
           ?.toLowerCase()
@@ -1353,9 +1514,6 @@ function ChatApp() {
         return
       }
 
-      /*
-       * NORMAL ERROR
-       */
       setMessages((prev) => [
         ...prev,
         {
@@ -1378,13 +1536,6 @@ function ChatApp() {
       setIsStreaming(false)
     }
   }
-
-  console.log("LUMORA CHAT DEBUG:", {
-    userId: user?.id,
-    chats,
-    chatsCount: chats.length,
-    activeChat,
-  })
 
   return (
     <div
@@ -1603,29 +1754,30 @@ function ChatApp() {
                 </motion.div>
               )}
 
-              {loading && !isStreaming && (
-                <motion.div
-                  className="typing-row"
-                  initial={{
-                    opacity: 0,
-                    y: 5,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                >
-                  <div className="typing-avatar">
-                    <Sparkles size={14} />
-                  </div>
+              {loading &&
+                !isStreaming && (
+                  <motion.div
+                    className="typing-row"
+                    initial={{
+                      opacity: 0,
+                      y: 5,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                    }}
+                  >
+                    <div className="typing-avatar">
+                      <Sparkles size={14} />
+                    </div>
 
-                  <div className="typing-indicator">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </motion.div>
-              )}
+                    <div className="typing-indicator">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </motion.div>
+                )}
 
               <div
                 ref={
