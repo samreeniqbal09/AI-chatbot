@@ -14,6 +14,7 @@ import {
   Menu,
   Moon,
   Sun,
+  Sparkles,
 } from "lucide-react"
 
 import { motion } from "motion/react"
@@ -146,11 +147,6 @@ function ChatApp() {
   const [remainingMessages, setRemainingMessages] =
     useState(MESSAGE_LIMIT)
 
-  /*
-   * Conversation token.
-   */
-  const conversationRef = useRef(0)
-
   const messagesEndRef = useRef(null)
 
   /*
@@ -183,99 +179,28 @@ function ChatApp() {
   }, [darkMode])
 
   /*
-   * ========================================
    * LOAD CHATS
-   * ========================================
-   *
-   * Loads all chats belonging to the current
-   * authenticated user.
-   *
-   * We first try updated_at.
-   * If that column is unavailable, we fall
-   * back to created_at.
-   *
-   * The result is ALSO sorted locally so the
-   * sidebar remains correct even when some
-   * updated_at values are null.
    */
   const loadChats = useCallback(async () => {
-    if (!user?.id) {
-      setChats([])
-      return
-    }
+    if (!user?.id) return
 
     try {
-      let chatData = null
-
-      /*
-       * Try updated_at first.
-       */
       const {
-        data: updatedChats,
-        error: updatedError,
+        data,
+        error,
       } = await supabase
         .from("chat_sessions")
         .select("*")
         .eq("user_id", user.id)
-        .order("updated_at", {
+        .order("created_at", {
           ascending: false,
-          nullsFirst: false,
         })
 
-      if (!updatedError) {
-        chatData = updatedChats || []
-      } else {
-        /*
-         * Fallback to created_at.
-         */
-        console.warn(
-          "updated_at unavailable, falling back to created_at:",
-          updatedError.message
-        )
-
-        const {
-          data,
-          error,
-        } = await supabase
-          .from("chat_sessions")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", {
-            ascending: false,
-          })
-
-        if (error) {
-          throw error
-        }
-
-        chatData = data || []
+      if (error) {
+        throw error
       }
 
-      /*
-       * Normalize and sort locally.
-       *
-       * updated_at has priority.
-       * created_at is the fallback.
-       */
-      const sortedChats = [...chatData].sort(
-        (a, b) => {
-          const dateA = new Date(
-            a.updated_at ||
-              a.created_at ||
-              0
-          ).getTime()
-
-          const dateB = new Date(
-            b.updated_at ||
-              b.created_at ||
-              0
-          ).getTime()
-
-          return dateB - dateA
-        }
-      )
-
-      setChats(sortedChats)
+      setChats(data || [])
     } catch (error) {
       console.error(
         "Load chats:",
@@ -284,35 +209,22 @@ function ChatApp() {
     }
   }, [user?.id])
 
-  /*
-   * Load chats when the user logs in.
-   */
   useEffect(() => {
     loadChats()
   }, [loadChats])
 
   /*
-   * ========================================
    * AUTO SCROLL
-   * ========================================
    */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
-      behavior: isStreaming
-        ? "auto"
-        : "smooth",
+      behavior: "smooth",
       block: "end",
     })
-  }, [
-    messages,
-    loading,
-    isStreaming,
-  ])
+  }, [messages, loading, isStreaming])
 
   /*
-   * ========================================
    * MOBILE SIDEBAR
-   * ========================================
    */
   useEffect(() => {
     const handleResize = () => {
@@ -338,9 +250,7 @@ function ChatApp() {
   }, [])
 
   /*
-   * ========================================
    * RATE LIMIT COUNTDOWN
-   * ========================================
    */
   useEffect(() => {
     if (!limitReached) return
@@ -366,9 +276,7 @@ function ChatApp() {
   }, [limitReached])
 
   /*
-   * ========================================
    * LOGOUT
-   * ========================================
    */
   const handleLogout = async () => {
     if (loading) return
@@ -386,8 +294,6 @@ function ChatApp() {
         )
         return
       }
-
-      conversationRef.current += 1
 
       setMessages([])
       setChats([])
@@ -407,13 +313,10 @@ function ChatApp() {
   }
 
   /*
-   * ========================================
    * CREATE CHAT
-   * ========================================
    */
   const createChat = async (
-    text = "New Chat",
-    shouldActivate = true
+    text = "New Chat"
   ) => {
     if (!user?.id) {
       throw new Error(
@@ -449,97 +352,21 @@ function ChatApp() {
       )
     }
 
-    /*
-     * Immediately add the new chat locally.
-     */
-    setChats((prev) => {
-      const newChats = [
-        data,
-        ...prev.filter(
-          (chat) =>
-            chat.id !== data.id
-        ),
-      ]
+    setChats((prev) => [
+      data,
+      ...prev.filter(
+        (chat) =>
+          chat.id !== data.id
+      ),
+    ])
 
-      return newChats.sort(
-        (a, b) => {
-          const dateA = new Date(
-            a.updated_at ||
-              a.created_at ||
-              0
-          ).getTime()
-
-          const dateB = new Date(
-            b.updated_at ||
-              b.created_at ||
-              0
-          ).getTime()
-
-          return dateB - dateA
-        }
-      )
-    })
-
-    if (shouldActivate) {
-      setActiveChat(data.id)
-    }
-
-    /*
-     * Refresh from Supabase so the sidebar
-     * definitely contains the database record.
-     */
-    try {
-      await loadChats()
-    } catch (refreshError) {
-      console.warn(
-        "Could not refresh chats after creation:",
-        refreshError
-      )
-    }
+    setActiveChat(data.id)
 
     return data
   }
 
   /*
-   * ========================================
-   * MOVE CHAT TO TOP
-   * ========================================
-   */
-  const moveChatToTop = (
-    chatId
-  ) => {
-    if (!chatId) return
-
-    setChats((prev) => {
-      const target = prev.find(
-        (chat) =>
-          chat.id === chatId
-      )
-
-      if (!target) {
-        return prev
-      }
-
-      const updatedChat = {
-        ...target,
-        updated_at:
-          new Date().toISOString(),
-      }
-
-      return [
-        updatedChat,
-        ...prev.filter(
-          (chat) =>
-            chat.id !== chatId
-        ),
-      ]
-    })
-  }
-
-  /*
-   * ========================================
    * PARSE STORED MESSAGE
-   * ========================================
    */
   const parseMessage = (message) => {
     let content =
@@ -575,9 +402,7 @@ function ChatApp() {
   }
 
   /*
-   * ========================================
    * LOAD MESSAGES
-   * ========================================
    */
   const loadMessages = async (
     chatId
@@ -588,8 +413,6 @@ function ChatApp() {
     ) {
       return
     }
-
-    conversationRef.current += 1
 
     try {
       const {
@@ -638,7 +461,6 @@ function ChatApp() {
       )
 
       setActiveChat(chatId)
-      setIsStreaming(false)
 
       if (
         window.innerWidth <
@@ -655,12 +477,10 @@ function ChatApp() {
   }
 
   /*
-   * ========================================
    * NEW CHAT
-   * ========================================
    */
   const handleNewChat = () => {
-    conversationRef.current += 1
+    if (loading) return
 
     setMessages([])
     setActiveChat(null)
@@ -675,9 +495,7 @@ function ChatApp() {
   }
 
   /*
-   * ========================================
    * DELETE CHAT
-   * ========================================
    */
   const deleteChat = async (
     chatId
@@ -716,11 +534,8 @@ function ChatApp() {
       if (
         activeChat === chatId
       ) {
-        conversationRef.current += 1
-
         setMessages([])
         setActiveChat(null)
-        setIsStreaming(false)
       }
     } catch (error) {
       console.error(
@@ -731,9 +546,7 @@ function ChatApp() {
   }
 
   /*
-   * ========================================
    * RENAME CHAT
-   * ========================================
    */
   const renameChat = async (
     chatId,
@@ -793,9 +606,7 @@ function ChatApp() {
   }
 
   /*
-   * ========================================
    * SAVE MESSAGE
-   * ========================================
    */
   const saveMessage = async (
     sessionId,
@@ -870,48 +681,10 @@ function ChatApp() {
           "Unable to save message."
       )
     }
-
-    /*
-     * Update activity timestamp.
-     */
-    try {
-      const {
-        error: updateError,
-      } = await supabase
-        .from("chat_sessions")
-        .update({
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq(
-          "id",
-          sessionId
-        )
-        .eq(
-          "user_id",
-          user.id
-        )
-
-      if (updateError) {
-        console.warn(
-          "Could not update chat activity time:",
-          updateError.message
-        )
-      }
-    } catch (updateError) {
-      console.warn(
-        "Chat activity update skipped:",
-        updateError
-      )
-    }
-
-    moveChatToTop(sessionId)
   }
 
   /*
-   * ========================================
    * BACKEND STREAMING
-   * ========================================
    */
   const askBackend = async (
     question,
@@ -924,8 +697,7 @@ function ChatApp() {
         session,
       },
       error: sessionError,
-    } =
-      await supabase.auth.getSession()
+    } = await supabase.auth.getSession()
 
     if (sessionError) {
       throw new Error(
@@ -962,7 +734,9 @@ function ChatApp() {
       )
 
     /*
-     * NON-OK RESPONSE
+     * The backend sends normal JSON for errors such as
+     * authentication/rate limiting, so read those responses
+     * before attempting to consume the stream.
      */
     if (!response.ok) {
       const responseText =
@@ -971,11 +745,10 @@ function ChatApp() {
       let data = null
 
       try {
-        data =
-          JSON.parse(
-            responseText
-          )
-      } catch {}
+        data = JSON.parse(responseText)
+      } catch {
+        // Keep the original response text.
+      }
 
       /*
        * RATE LIMIT
@@ -989,10 +762,7 @@ function ChatApp() {
             data?.retry_after_minutes
           ) || 1
 
-        setRetryMinutes(
-          minutes
-        )
-
+        setRetryMinutes(minutes)
         setLimitReached(true)
         setRemainingMessages(0)
 
@@ -1002,8 +772,7 @@ function ChatApp() {
               `You've reached your ${MESSAGE_LIMIT} message limit. Please try again in ${minutes} minutes.`
           )
 
-        limitError.isRateLimit =
-          true
+        limitError.isRateLimit = true
 
         throw limitError
       }
@@ -1027,24 +796,22 @@ function ChatApp() {
         "content-type"
       ) || ""
 
-    /*
-     * LEGACY JSON FALLBACK
-     */
     if (
       !contentType.includes(
         "text/event-stream"
       )
     ) {
+      /*
+       * Safety fallback for an older deployment that may
+       * still return the original JSON response.
+       */
       const responseText =
         await response.text()
 
       let data = null
 
       try {
-        data =
-          JSON.parse(
-            responseText
-          )
+        data = JSON.parse(responseText)
       } catch {
         throw new Error(
           "API returned an invalid response."
@@ -1103,59 +870,6 @@ function ChatApp() {
     let buffer = ""
     let completed = false
 
-    const processPayload = (
-      payload
-    ) => {
-      if (
-        payload?.type ===
-          "chunk" &&
-        typeof payload.content ===
-          "string" &&
-        payload.content
-      ) {
-        onChunk(
-          payload.content
-        )
-      }
-
-      if (
-        payload?.type === "done"
-      ) {
-        completed = true
-
-        if (
-          typeof payload.remaining ===
-            "number"
-        ) {
-          setRemainingMessages(
-            Math.max(
-              0,
-              payload.remaining
-            )
-          )
-        }
-
-        onDone({
-          answer:
-            payload.answer || "",
-          image:
-            payload.image || null,
-          remaining:
-            payload.remaining,
-        })
-      }
-
-      if (
-        payload?.type ===
-        "error"
-      ) {
-        throw new Error(
-          payload.error ||
-            "The AI response could not be streamed."
-        )
-      }
-    }
-
     try {
       while (true) {
         const {
@@ -1165,67 +879,91 @@ function ChatApp() {
 
         if (done) break
 
-        buffer +=
-          decoder.decode(
-            value,
-            {
-              stream: true,
-            }
-          )
+        buffer += decoder.decode(
+          value,
+          { stream: true }
+        )
 
         const events =
-          buffer.split(
-            "\n\n"
-          )
+          buffer.split("\n\n")
 
         buffer =
           events.pop() || ""
 
         for (const event of events) {
           const lines =
-            event.split(
-              /\r?\n/
-            )
+            event.split(/\r?\n/)
 
           for (const line of lines) {
             if (
-              !line.startsWith(
-                "data:"
-              )
+              !line.startsWith("data:")
             ) {
               continue
             }
 
             const jsonText =
-              line
-                .slice(5)
-                .trim()
+              line.slice(5).trim()
 
-            if (!jsonText) {
-              continue
-            }
+            if (!jsonText) continue
+
+            let payload
 
             try {
-              const payload =
-                JSON.parse(
-                  jsonText
-                )
-
-              processPayload(
-                payload
-              )
+              payload =
+                JSON.parse(jsonText)
             } catch (parseError) {
-              if (
-                parseError instanceof Error &&
-                parseError.message ===
-                  "The AI response could not be streamed."
-              ) {
-                throw parseError
-              }
-
               console.warn(
                 "Invalid SSE data:",
                 parseError
+              )
+              continue
+            }
+
+            if (
+              payload?.type ===
+                "chunk" &&
+              typeof payload.content ===
+                "string" &&
+              payload.content
+            ) {
+              onChunk(
+                payload.content
+              )
+            }
+
+            if (
+              payload?.type === "done"
+            ) {
+              completed = true
+
+              if (
+                typeof payload.remaining ===
+                  "number"
+              ) {
+                setRemainingMessages(
+                  Math.max(
+                    0,
+                    payload.remaining
+                  )
+                )
+              }
+
+              onDone({
+                answer:
+                  payload.answer || "",
+                image:
+                  payload.image || null,
+                remaining:
+                  payload.remaining,
+              })
+            }
+
+            if (
+              payload?.type === "error"
+            ) {
+              throw new Error(
+                payload.error ||
+                  "The AI response could not be streamed."
               )
             }
           }
@@ -1233,44 +971,77 @@ function ChatApp() {
       }
 
       /*
-       * Process final decoder bytes.
+       * Process any final bytes left in the decoder.
        */
-      buffer +=
-        decoder.decode()
+      buffer += decoder.decode()
 
       if (buffer.trim()) {
         const lines =
-          buffer.split(
-            /\r?\n/
-          )
+          buffer.split(/\r?\n/)
 
         for (const line of lines) {
           if (
-            !line.startsWith(
-              "data:"
-            )
+            !line.startsWith("data:")
           ) {
             continue
           }
 
           const jsonText =
-            line
-              .slice(5)
-              .trim()
+            line.slice(5).trim()
 
-          if (!jsonText) {
-            continue
-          }
+          if (!jsonText) continue
 
           try {
             const payload =
-              JSON.parse(
-                jsonText
-              )
+              JSON.parse(jsonText)
 
-            processPayload(
-              payload
-            )
+            if (
+              payload?.type ===
+                "chunk" &&
+              typeof payload.content ===
+                "string" &&
+              payload.content
+            ) {
+              onChunk(
+                payload.content
+              )
+            }
+
+            if (
+              payload?.type === "done"
+            ) {
+              completed = true
+
+              if (
+                typeof payload.remaining ===
+                  "number"
+              ) {
+                setRemainingMessages(
+                  Math.max(
+                    0,
+                    payload.remaining
+                  )
+                )
+              }
+
+              onDone({
+                answer:
+                  payload.answer || "",
+                image:
+                  payload.image || null,
+                remaining:
+                  payload.remaining,
+              })
+            }
+
+            if (
+              payload?.type === "error"
+            ) {
+              throw new Error(
+                payload.error ||
+                  "The AI response could not be streamed."
+              )
+            }
           } catch (parseError) {
             if (
               parseError instanceof Error &&
@@ -1294,9 +1065,7 @@ function ChatApp() {
   }
 
   /*
-   * ========================================
    * SEND MESSAGE
-   * ========================================
    */
   const sendMessage = async (
     text,
@@ -1314,18 +1083,15 @@ function ChatApp() {
       return
     }
 
-    const conversationId =
-      conversationRef.current
-
     setLoading(true)
     setIsStreaming(false)
 
     /*
-     * USER MESSAGE
+     * Show user message immediately.
      */
     const temporaryUserMessage = {
       id:
-        `user-${Date.now()}-${Math.random()}`,
+        `user-${Date.now()}`,
       role: "user",
       content:
         cleanText,
@@ -1343,67 +1109,54 @@ function ChatApp() {
     let streamCompleted = false
     let firstChunkReceived = false
 
-    const isCurrentConversation = () =>
-      conversationRef.current ===
-      conversationId
-
     try {
+      /*
+       * Create an empty assistant message before the first
+       * chunk so the same message bubble can be updated as
+       * the response arrives.
+       */
+      assistantId =
+        `assistant-${Date.now()}`
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          image: null,
+        },
+      ])
+
       await askBackend(
         cleanText,
         image,
         (chunk) => {
-          if (
-            !chunk ||
-            !isCurrentConversation()
-          ) {
-            if (chunk) {
-              fullAnswer += chunk
-            }
-
-            return
-          }
+          if (!chunk) return
 
           /*
-           * FIRST CHUNK
+           * The first chunk switches the typing indicator
+           * off, while loading remains true so the input and
+           * chat controls stay locked during streaming.
            */
           if (!firstChunkReceived) {
             firstChunkReceived = true
-
-            assistantId =
-              `assistant-${Date.now()}-${Math.random()}`
-
             setIsStreaming(true)
-
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: assistantId,
-                role: "assistant",
-                content: chunk,
-                image: null,
-              },
-            ])
-          } else {
-            /*
-             * APPEND STREAMING CHUNK
-             */
-            setMessages((prev) =>
-              prev.map(
-                (message) =>
-                  message.id ===
-                    assistantId
-                    ? {
-                        ...message,
-                        content:
-                          fullAnswer +
-                          chunk,
-                      }
-                    : message
-              )
-            )
           }
 
           fullAnswer += chunk
+
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    content:
+                      fullAnswer,
+                  }
+                : message
+            )
+          )
         },
         (result) => {
           streamCompleted = true
@@ -1420,15 +1173,16 @@ function ChatApp() {
             )
           }
 
-          /*
-           * Backend final answer is source
-           * of truth.
-           */
           if (
             typeof result?.answer ===
               "string" &&
             result.answer
           ) {
+            /*
+             * Use the server's completed answer as the final
+             * source of truth. This also protects against any
+             * unusual chunk boundary behavior.
+             */
             fullAnswer =
               result.answer
           }
@@ -1436,52 +1190,19 @@ function ChatApp() {
           assistantImage =
             result?.image || null
 
-          if (
-            !isCurrentConversation()
-          ) {
-            setLoading(false)
-            setIsStreaming(false)
-            return
-          }
-
-          /*
-           * Handle responses without chunks.
-           */
-          if (!assistantId) {
-            assistantId =
-              `assistant-${Date.now()}-${Math.random()}`
-
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: assistantId,
-                role: "assistant",
-                content:
-                  fullAnswer,
-                image:
-                  assistantImage,
-              },
-            ])
-          } else {
-            setMessages((prev) =>
-              prev.map(
-                (message) =>
-                  message.id ===
-                    assistantId
-                    ? {
-                        ...message,
-                        content:
-                          fullAnswer,
-                        image:
-                          assistantImage,
-                      }
-                    : message
-              )
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    content:
+                      fullAnswer,
+                    image:
+                      assistantImage,
+                  }
+                : message
             )
-          }
-
-          setLoading(false)
-          setIsStreaming(false)
+          )
         }
       )
 
@@ -1497,43 +1218,26 @@ function ChatApp() {
       const cleanAnswer =
         fullAnswer.trim()
 
-      if (
-        !isCurrentConversation()
-      ) {
-        return
-      }
-
       /*
-       * GET CURRENT CHAT
+       * Create chat only after the backend has successfully
+       * completed the AI response. This preserves the current
+       * behavior of avoiding empty chats after API failures.
        */
-      let chatId = activeChat
+      let chatId =
+        activeChat
 
-      /*
-       * FIRST MESSAGE = CREATE CHAT
-       */
       if (!chatId) {
-        const shouldActivate =
-          conversationRef.current ===
-          conversationId
-
         const chat =
           await createChat(
             cleanText ||
-              "Image conversation",
-            shouldActivate
+              "Image conversation"
           )
 
         chatId = chat.id
       }
 
-      if (
-        !isCurrentConversation()
-      ) {
-        return
-      }
-
       /*
-       * SAVE USER MESSAGE
+       * Save USER message exactly once.
        */
       await saveMessage(
         chatId,
@@ -1542,35 +1246,26 @@ function ChatApp() {
         image
       )
 
-      if (
-        !isCurrentConversation()
-      ) {
-        return
-      }
-
       /*
-       * UPDATE ASSISTANT MESSAGE
+       * Ensure the final streamed assistant message has the
+       * trimmed content used for persistence.
        */
-      if (assistantId) {
-        setMessages((prev) =>
-          prev.map(
-            (message) =>
-              message.id ===
-                assistantId
-                ? {
-                    ...message,
-                    content:
-                      cleanAnswer,
-                    image:
-                      assistantImage,
-                  }
-                : message
-          )
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                content:
+                  cleanAnswer,
+                image:
+                  assistantImage,
+              }
+            : message
         )
-      }
+      )
 
       /*
-       * SAVE AI MESSAGE
+       * Save the COMPLETE AI response once the stream ends.
        */
       await saveMessage(
         chatId,
@@ -1580,45 +1275,30 @@ function ChatApp() {
       )
 
       /*
-       * MOVE TO TOP
+       * Refresh sidebar.
        */
-      moveChatToTop(chatId)
-
-      /*
-       * FINAL REFRESH
-       */
-      if (
-        isCurrentConversation()
-      ) {
-        await loadChats()
-      }
+      await loadChats()
     } catch (error) {
       console.error(
         "Chat error:",
         error
       )
 
-      if (
-        !isCurrentConversation()
-      ) {
-        return
-      }
-
       /*
-       * REMOVE PARTIAL ASSISTANT
+       * Remove the empty/partial assistant bubble when the
+       * stream fails before a complete response is available.
        */
       if (assistantId) {
         setMessages((prev) =>
           prev.filter(
             (message) =>
-              message.id !==
-              assistantId
+              message.id !== assistantId
           )
         )
       }
 
       /*
-       * RATE LIMIT
+       * RATE LIMIT ERROR
        */
       if (
         error?.isRateLimit ||
@@ -1699,6 +1379,13 @@ function ChatApp() {
     }
   }
 
+  console.log("LUMORA CHAT DEBUG:", {
+    userId: user?.id,
+    chats,
+    chatsCount: chats.length,
+    activeChat,
+  })
+
   return (
     <div
       className={`app ${
@@ -1708,27 +1395,35 @@ function ChatApp() {
       <Sidebar
         chats={chats}
         activeChat={activeChat}
+
         onNewChat={
           handleNewChat
         }
+
         onSelectChat={
           loadMessages
         }
+
         onDeleteChat={
           deleteChat
         }
+
         onRenameChat={
           renameChat
         }
+
         onLogout={
           handleLogout
         }
+
         sidebarOpen={
           sidebarOpen
         }
+
         setSidebarOpen={
           setSidebarOpen
         }
+
         darkMode={
           darkMode
         }
@@ -1840,7 +1535,7 @@ function ChatApp() {
                   opacity: 1,
                 }}
               >
-                <LumoraIcon size={40} />
+                <Sparkles size={27} />
               </motion.div>
 
               <h1>
@@ -1908,30 +1603,29 @@ function ChatApp() {
                 </motion.div>
               )}
 
-              {loading &&
-                !isStreaming && (
-                  <motion.div
-                    className="typing-row"
-                    initial={{
-                      opacity: 0,
-                      y: 5,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
-                  >
-                    <div className="typing-avatar">
-                      <LumoraIcon size={16} />
-                    </div>
+              {loading && !isStreaming && (
+                <motion.div
+                  className="typing-row"
+                  initial={{
+                    opacity: 0,
+                    y: 5,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                >
+                  <div className="typing-avatar">
+                    <Sparkles size={14} />
+                  </div>
 
-                    <div className="typing-indicator">
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  </motion.div>
-                )}
+                  <div className="typing-indicator">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </motion.div>
+              )}
 
               <div
                 ref={
