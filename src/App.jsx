@@ -14,7 +14,6 @@ import {
   Menu,
   Moon,
   Sun,
-  Sparkles,
 } from "lucide-react"
 
 import { motion } from "motion/react"
@@ -191,11 +190,47 @@ function ChatApp() {
 
   /*
    * LOAD CHATS
+   *
+   * Recent chats are ordered by updated_at.
+   *
+   * If updated_at does not exist in the database,
+   * automatically fall back to created_at.
    */
   const loadChats = useCallback(async () => {
     if (!user?.id) return
 
     try {
+      /*
+       * First try updated_at.
+       */
+      const {
+        data: updatedChats,
+        error: updatedError,
+      } = await supabase
+        .from("chat_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", {
+          ascending: false,
+        })
+
+      /*
+       * If updated_at exists, use it.
+       */
+      if (!updatedError) {
+        setChats(updatedChats || [])
+        return
+      }
+
+      /*
+       * Fallback for databases that don't yet have
+       * an updated_at column.
+       */
+      console.warn(
+        "updated_at unavailable, falling back to created_at:",
+        updatedError.message
+      )
+
       const {
         data,
         error,
@@ -374,6 +409,10 @@ function ChatApp() {
       )
     }
 
+    /*
+     * Put newly-created chat at the top
+     * of Recent Chats immediately.
+     */
     setChats((prev) => [
       data,
       ...prev.filter(
@@ -387,6 +426,43 @@ function ChatApp() {
     }
 
     return data
+  }
+
+  /*
+   * MOVE CHAT TO TOP
+   *
+   * This gives the sidebar immediate feedback
+   * after a message is saved.
+   */
+  const moveChatToTop = (
+    chatId
+  ) => {
+    if (!chatId) return
+
+    setChats((prev) => {
+      const target = prev.find(
+        (chat) =>
+          chat.id === chatId
+      )
+
+      if (!target) {
+        return prev
+      }
+
+      const updatedChat = {
+        ...target,
+        updated_at:
+          new Date().toISOString(),
+      }
+
+      return [
+        updatedChat,
+        ...prev.filter(
+          (chat) =>
+            chat.id !== chatId
+        ),
+      ]
+    })
   }
 
   /*
@@ -719,6 +795,53 @@ function ChatApp() {
           "Unable to save message."
       )
     }
+
+    /*
+     * Update chat activity time.
+     *
+     * If updated_at exists, this makes the chat
+     * move to the top even after page refresh.
+     *
+     * If the column does not exist yet, the error
+     * is ignored because the message itself was
+     * successfully saved.
+     */
+    try {
+      const {
+        error: updateError,
+      } = await supabase
+        .from("chat_sessions")
+        .update({
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq(
+          "id",
+          sessionId
+        )
+        .eq(
+          "user_id",
+          user.id
+        )
+
+      if (updateError) {
+        console.warn(
+          "Could not update chat activity time:",
+          updateError.message
+        )
+      }
+    } catch (updateError) {
+      console.warn(
+        "Chat activity update skipped:",
+        updateError
+      )
+    }
+
+    /*
+     * Immediately move this chat to the top
+     * of the sidebar.
+     */
+    moveChatToTop(sessionId)
   }
 
   /*
@@ -735,7 +858,8 @@ function ChatApp() {
         session,
       },
       error: sessionError,
-    } = await supabase.auth.getSession()
+    } =
+      await supabase.auth.getSession()
 
     if (sessionError) {
       throw new Error(
@@ -956,7 +1080,8 @@ function ChatApp() {
       }
 
       if (
-        payload?.type === "error"
+        payload?.type ===
+        "error"
       ) {
         throw new Error(
           payload.error ||
@@ -1123,10 +1248,6 @@ function ChatApp() {
 
     /*
      * Capture the current conversation.
-     *
-     * If the user later clicks New Chat or selects
-     * another chat, conversationRef.current changes
-     * and this stream becomes stale.
      */
     const conversationId =
       conversationRef.current
@@ -1174,11 +1295,6 @@ function ChatApp() {
             !chunk ||
             !isCurrentConversation()
           ) {
-            /*
-             * The backend continues safely, but
-             * this old stream is no longer allowed
-             * to update the current UI.
-             */
             if (chunk) {
               fullAnswer += chunk
             }
@@ -1187,11 +1303,7 @@ function ChatApp() {
           }
 
           /*
-           * First chunk:
-           *
-           * - remove typing indicator
-           * - create assistant bubble
-           * - display first chunk
+           * First chunk.
            */
           if (!firstChunkReceived) {
             firstChunkReceived = true
@@ -1248,8 +1360,7 @@ function ChatApp() {
           }
 
           /*
-           * Always use the backend's final
-           * completed answer as the source of truth.
+           * Backend final answer is source of truth.
            */
           if (
             typeof result?.answer ===
@@ -1264,11 +1375,8 @@ function ChatApp() {
             result?.image || null
 
           /*
-           * If the user has moved to another
+           * If user moved to another
            * conversation, don't touch its UI.
-           *
-           * We still allow the current function
-           * to finish safely.
            */
           if (
             !isCurrentConversation()
@@ -1279,8 +1387,7 @@ function ChatApp() {
           }
 
           /*
-           * Some responses may contain a final
-           * answer without receiving a chunk.
+           * Handle final answer without chunks.
            */
           if (!assistantId) {
             assistantId =
@@ -1315,11 +1422,6 @@ function ChatApp() {
             )
           }
 
-          /*
-           * The AI has finished generating.
-           *
-           * Unlock the input immediately.
-           */
           setLoading(false)
           setIsStreaming(false)
         }
@@ -1338,9 +1440,8 @@ function ChatApp() {
         fullAnswer.trim()
 
       /*
-       * If the user switched conversations
-       * while the stream was running, don't save
-       * this response into the newly selected chat.
+       * If user switched conversations,
+       * don't save into new chat.
        */
       if (
         !isCurrentConversation()
@@ -1354,10 +1455,6 @@ function ChatApp() {
       let chatId = activeChat
 
       if (!chatId) {
-        /*
-         * Only activate the newly-created chat
-         * if the user is still in the same conversation.
-         */
         const shouldActivate =
           conversationRef.current ===
           conversationId
@@ -1373,8 +1470,7 @@ function ChatApp() {
       }
 
       /*
-       * Make sure the user didn't switch chats
-       * while the Supabase request was running.
+       * Make sure user didn't switch chats.
        */
       if (
         !isCurrentConversation()
@@ -1393,7 +1489,7 @@ function ChatApp() {
       )
 
       /*
-       * Make sure the conversation wasn't
+       * Make sure conversation wasn't
        * changed during the save.
        */
       if (
@@ -1434,8 +1530,19 @@ function ChatApp() {
       )
 
       /*
-       * Refresh sidebar only if the user
-       * is still viewing the same conversation.
+       * Make sure the chat stays at the top
+       * immediately.
+       */
+      moveChatToTop(chatId)
+
+      /*
+       * Refresh sidebar from Supabase.
+       *
+       * If updated_at exists, the refreshed list
+       * will remain correctly ordered.
+       *
+       * If it doesn't, the fallback ordering
+       * will still work.
        */
       if (
         isCurrentConversation()
@@ -1449,9 +1556,8 @@ function ChatApp() {
       )
 
       /*
-       * If this stream belongs to an old
-       * conversation, do not show its error
-       * inside the new conversation.
+       * If this is an old conversation,
+       * don't show its error.
        */
       if (
         !isCurrentConversation()

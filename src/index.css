@@ -184,7 +184,9 @@ a {
 .lumora-auth-brand-icon img {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
+  border-radius: 12px;
 }
 
 .lumora-auth-brand-name {
@@ -204,6 +206,30 @@ a {
 }
 
 /* =========================================================
+   AUTH TITLE
+========================================================= */
+
+.lumora-auth-title {
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.lumora-auth-title h1 {
+  margin: 0;
+  color: #140634;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lumora-auth-title p {
+  margin: 6px 0 0;
+  color: #8b8b95;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* =========================================================
    AUTH CARD
 ========================================================= */
 
@@ -218,31 +244,6 @@ a {
     0 4px 14px rgba(24, 24, 27, 0.04);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-}
-
-/* =========================================================
-   AUTH TITLE
-========================================================= */
-
-.lumora-auth-title {
-  margin-bottom: 25px;
-  text-align: center;
-}
-
-.lumora-auth-title h1 {
-  margin: 0;
-  color: #140634;
-  font-size: 25px;
-  line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-}
-
-.lumora-auth-title p {
-  margin: 8px 0 0;
-  color: #85858e;
-  font-size: 11px;
-  line-height: 1.5;
 }
 
 /* =========================================================
@@ -661,7 +662,6 @@ body.dark .lumora-auth-footer,
 /* =========================================================
    SIDEBAR
 ========================================================= */
-
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -694,6 +694,7 @@ body.dark .lumora-auth-footer,
   min-width: 0;
 }
 
+/* SIDEBAR LOGO */
 .brand-icon,
 .header-logo,
 .message-avatar,
@@ -708,7 +709,7 @@ body.dark .lumora-auth-footer,
   height: 38px;
   flex-shrink: 0;
   overflow: hidden;
-  border-radius: var(--radius);
+  border-radius: 12px;
   background: transparent;
 }
 
@@ -717,6 +718,7 @@ body.dark .lumora-auth-footer,
   height: 100%;
   display: block;
   object-fit: cover;
+  border-radius: 12px;
 }
 
 .brand h2 {
@@ -1284,12 +1286,11 @@ body.dark .lumora-auth-footer,
 .header-center {
   gap: 8px;
 }
-
 .header-logo {
   width: 29px;
   height: 29px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #f5e9fd;
   color: var(--primary);
 }
@@ -1297,9 +1298,10 @@ body.dark .lumora-auth-footer,
 .header-logo img {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
+  border-radius: 10px;
 }
-
 .header-title {
   font-size: 13px;
   font-weight: 700;
@@ -1362,19 +1364,20 @@ body.dark .lumora-auth-footer,
   max-width: min(80%, 760px);
   min-width: 0;
 }
-
 .message-avatar {
-  width: 29px;
-  height: 29px;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 9px;
+  width:29px;
+  height:29px;
+  flex-shrink:0;
+  overflow:hidden;
+  border-radius:10px;
 }
 
 .message-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  border-radius:10px;
 }
 
 .ai-avatar,
@@ -1421,7 +1424,6 @@ body.dark .lumora-auth-footer,
   object-fit: contain;
   border-radius: 10px;
 }
-
 /* =========================================================
    TYPING
 ========================================================= */
@@ -1436,7 +1438,17 @@ body.dark .lumora-auth-footer,
 .typing-avatar {
   width: 27px;
   height: 27px;
-  border-radius: 8px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.typing-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 10px;
 }
 
 .typing-indicator {
@@ -1490,21 +1502,9 @@ body.dark .lumora-auth-footer,
 .welcome-icon img {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
-}
-
-.welcome-screen h1 {
-  margin: 0;
-  font-size: clamp(26px, 5vw, 37px);
-  letter-spacing: -0.035em;
-}
-
-.welcome-screen > p {
-  max-width: 540px;
-  margin: 10px auto 23px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
+  border-radius: 16px;
 }
 
 /* =========================================================
@@ -1988,7 +1988,6 @@ body.dark .lumora-auth-footer,
   color: var(--text);
   overflow-x: hidden;
 }
-
 /* ---------------------------------------------------------
    Landing Navbar
 --------------------------------------------------------- */
@@ -2023,13 +2022,16 @@ body.dark .lumora-auth-footer,
   overflow: hidden;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 
 .landing-brand-icon img {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
+  border-radius: 10px;
 }
 
 .landing-brand-name {
@@ -2097,7 +2099,6 @@ body.dark .lumora-auth-footer,
   background: linear-gradient(135deg, #8b3fc0, #7c2fb0);
   transform: translateY(-1px);
 }
-
 /* ---------------------------------------------------------
    Hero
 --------------------------------------------------------- */
@@ -2591,13 +2592,31 @@ body.dark .lumora-auth-footer,
 }
 
 /* =========================================================
-   TABLET
+   TABLET / MOBILE SIDEBAR
+   (merged single breakpoint — was split across
+   899px and 900px blocks, now unified at 900px)
 ========================================================= */
 
-@media (max-width: 899px) {
+@media (max-width: 900px) {
   .sidebar {
     width: min(290px, 88vw);
+    top: 0;
+    bottom: 0;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar-header,
+  .sidebar-search,
+  .new-chat-button {
+    flex-shrink: 0;
   }
 
   .sidebar-close-button {
@@ -2615,6 +2634,37 @@ body.dark .lumora-auth-footer,
 
   .message-content {
     max-width: 84%;
+  }
+
+  .chat-history {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin-top: 12px;
+    padding-bottom: 8px;
+  }
+
+  /* Keep logout area fully inside the viewport */
+  .sidebar-footer,
+  .sidebar-bottom,
+  .sidebar-footer-section {
+    flex: 0 0 auto;
+    min-height: fit-content;
+    margin-top: 6px;
+    padding-top: 7px;
+    padding-bottom: 2px;
+  }
+
+  .sidebar-logout,
+  .logout-button,
+  .logout-btn {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    min-height: 40px;
+    flex: 0 0 40px;
+    margin: 0;
   }
 
   .app.dark .sidebar {
@@ -2807,13 +2857,12 @@ body.dark .lumora-auth-footer,
     flex-direction: column;
     text-align: center;
   }
-}
-
-/* =========================================================
+}/* =========================================================
    VERY SMALL MOBILE
 ========================================================= */
 
 @media (max-width: 380px) {
+
   .lumora-auth {
     padding: 18px 12px;
   }
@@ -2825,6 +2874,16 @@ body.dark .lumora-auth-footer,
   .lumora-auth-brand-icon {
     width: 39px;
     height: 39px;
+    border-radius: 11px;
+    overflow: hidden;
+  }
+
+  .lumora-auth-brand-icon img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: 11px;
   }
 
   .lumora-auth-brand-name {
@@ -2874,8 +2933,8 @@ body.dark .lumora-auth-footer,
   .landing-badge {
     font-size: 8px;
   }
-}
 
+}
 /* =========================================================
    REDUCED MOTION
 ========================================================= */
@@ -2890,70 +2949,15 @@ body.dark .lumora-auth-footer,
     scroll-behavior: auto !important;
   }
 }
+
 /* =========================================================
-   MOBILE SIDEBAR - FIX LOGOUT BUTTON CUT OFF
-   Added for Lumora AI
+   SHORT MOBILE SCREENS
 ========================================================= */
 
-@media (max-width: 900px) {
-  .sidebar {
-    width: min(290px, 88vw);
-    height: 100dvh;
-    min-height: 100dvh;
-    max-height: 100dvh;
-    padding: 12px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .sidebar-header {
-    flex: 0 0 auto;
-  }
-
-  .sidebar-search,
-  .new-chat-button {
-    flex-shrink: 0;
-  }
-
-  .chat-history {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    margin-top: 12px;
-    padding-bottom: 8px;
-  }
-
-  /* Keep the sidebar's bottom/logout area inside the viewport. */
-  .sidebar-footer,
-  .sidebar-bottom,
-  .sidebar-footer-section {
-    flex: 0 0 auto;
-    min-height: fit-content;
-    margin-top: 6px;
-    padding-top: 7px;
-    padding-bottom: 2px;
-  }
-
-  .sidebar-logout,
-  .logout-button,
-  .logout-btn {
-    width: 100%;
-    min-width: 0;
-    height: 40px;
-    min-height: 40px;
-    flex: 0 0 40px;
-    margin-bottom: 0;
-  }
-}
-
-/* Extra protection for short mobile screens. */
 @media (max-width: 900px) and (max-height: 700px) {
   .sidebar {
     padding-top: 9px;
-    padding-bottom: calc(9px + env(safe-area-inset-bottom));
+    padding-bottom: max(9px, env(safe-area-inset-bottom));
   }
 
   .sidebar-header {
