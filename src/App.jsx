@@ -261,10 +261,18 @@ function ChatApp() {
 
   /*
    * AUTO SCROLL
+   *
+   * While actively streaming, use "auto" (instant) instead of
+   * "smooth". Every incoming chunk updates `messages`, which
+   * re-triggers this effect - if each one starts a new smooth
+   * scroll animation before the previous one finishes, the
+   * viewport fights itself and looks shaky/jittery. Instant
+   * scroll during streaming avoids that, while completed
+   * messages still get a smooth scroll.
    */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
+      behavior: isStreaming ? "auto" : "smooth",
       block: "end",
     })
   }, [
