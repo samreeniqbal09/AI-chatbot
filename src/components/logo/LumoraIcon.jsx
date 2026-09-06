@@ -10,8 +10,14 @@
  * Usage:
  *   <LumoraIcon size={40} />
  *   <LumoraIcon size={64} className="rounded-xl" />
+ *   <LumoraIcon size={64} radius={0} />  // opt out of rounding
  */
-export default function LumoraIcon({ size = 40, className = "", ...props }) {
+export default function LumoraIcon({
+  size = 40,
+  radius = 10,
+  className = "",
+  ...props
+}) {
   return (
     <img
       src="/Lumora-logo.png"
@@ -19,7 +25,11 @@ export default function LumoraIcon({ size = 40, className = "", ...props }) {
       width={size}
       height={size}
       className={className}
-      style={{ objectFit: "contain" }}
+      style={{
+        objectFit: "contain",
+        borderRadius: `${radius}px`,
+        overflow: "hidden",
+      }}
       {...props}
     />
   );
