@@ -2590,11 +2590,8 @@ body.dark .lumora-auth-footer,
     transform: scale(0.75);
   }
 }
-
 /* =========================================================
    TABLET / MOBILE SIDEBAR
-   (merged single breakpoint — was split across
-   899px and 900px blocks, now unified at 900px)
 ========================================================= */
 
 @media (max-width: 900px) {
@@ -2605,11 +2602,19 @@ body.dark .lumora-auth-footer,
     height: 100dvh;
     min-height: 100dvh;
     max-height: 100dvh;
+
     padding: 12px;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
+
     display: flex;
     flex-direction: column;
+
     overflow: hidden;
+
+    /* Motion controls the slide position */
+    transform: none !important;
+
+    z-index: 100;
     box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
   }
 
@@ -2619,8 +2624,100 @@ body.dark .lumora-auth-footer,
     flex-shrink: 0;
   }
 
-  .sidebar-close-button {
-    display: grid;
+  .sidebar-search {
+    position: relative;
+    z-index: 110;
+  }
+
+  .new-chat-button {
+    position: relative;
+    z-index: 110;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .chat-history {
+    position: relative;
+    z-index: 100;
+
+    flex: 1 1 auto;
+    min-height: 0;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    margin-top: 12px;
+    padding-bottom: 8px;
+
+    pointer-events: auto;
+  }
+
+  .section-heading {
+    position: relative;
+    z-index: 110;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .chat-history-content {
+    position: relative;
+    z-index: 100;
+    pointer-events: auto;
+  }
+
+  .chat-item {
+    position: relative;
+    z-index: 101;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  .chat-menu-button {
+    position: relative;
+    z-index: 300;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  .chat-options-menu {
+    z-index: 1000;
+    pointer-events: auto;
+  }
+
+  .chat-options-menu button {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  .sidebar-bottom {
+    position: relative;
+    z-index: 110;
+
+    flex: 0 0 auto;
+    min-height: fit-content;
+
+    margin-top: 6px;
+    padding-top: 7px;
+    padding-bottom: 2px;
+  }
+
+  .logout-button {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    min-height: 40px;
+
+    flex: 0 0 40px;
+
+    margin: 0;
+
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .sidebar-overlay {
+    z-index: 90;
+    pointer-events: auto;
   }
 
   .main-content {
@@ -2636,41 +2733,6 @@ body.dark .lumora-auth-footer,
     max-width: 84%;
   }
 
-  .chat-history {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    margin-top: 12px;
-    padding-bottom: 8px;
-  }
-
-  /* Keep logout area fully inside the viewport */
-  .sidebar-footer,
-  .sidebar-bottom,
-  .sidebar-footer-section {
-    flex: 0 0 auto;
-    min-height: fit-content;
-    margin-top: 6px;
-    padding-top: 7px;
-    padding-bottom: 2px;
-  }
-
-  .sidebar-logout,
-  .logout-button,
-  .logout-btn {
-    width: 100%;
-    min-width: 0;
-    height: 40px;
-    min-height: 40px;
-    flex: 0 0 40px;
-    margin: 0;
-  }
-
-  .app.dark .sidebar {
-    box-shadow: 8px 0 30px rgba(0, 0, 0, 0.45);
-  }
-
   .landing-features {
     grid-template-columns: 1fr;
   }
@@ -2679,101 +2741,6 @@ body.dark .lumora-auth-footer,
     padding: 75px 18px;
   }
 }
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media (max-width: 600px) {
-  .lumora-auth {
-    padding: 24px 15px;
-  }
-
-  .lumora-auth-card {
-    padding: 25px 20px;
-    border-radius: 17px;
-  }
-
-  .lumora-auth-brand {
-    margin-bottom: 22px;
-  }
-
-  .lumora-auth-title {
-    margin-bottom: 22px;
-  }
-
-  .lumora-auth-title h1 {
-    font-size: 23px;
-  }
-
-  .lumora-auth-form {
-    gap: 16px;
-  }
-
-  .lumora-auth-input,
-  .lumora-auth-submit {
-    height: 44px;
-  }
-
-  .lumora-auth-footer {
-    margin-top: 15px;
-  }
-
-  .online-status,
-  .header-subtitle {
-    display: none;
-  }
-
-  .chat-header {
-    height: 56px;
-    padding: 0 10px;
-  }
-
-  .quick-prompts {
-    grid-template-columns: 1fr;
-  }
-
-  .messages-list {
-    padding: 16px 11px 130px;
-  }
-
-  .message-content {
-    max-width: 86%;
-  }
-
-  .chat-input-container {
-    padding: 8px;
-  }
-
-  .chat-input-wrapper {
-    min-height: 54px;
-  }
-
-  .chat-input {
-    font-size: 13px;
-  }
-
-  .welcome-screen {
-    padding-top: 36px;
-  }
-
-  .welcome-screen h1 {
-    font-size: 28px;
-  }
-
-  .message-image {
-    max-width: 220px;
-    max-height: 180px;
-  }
-
-  .quick-prompt-card {
-    padding: 11px;
-  }
-
-  .sidebar-logout,
-  .logout-button {
-    height: 40px;
-  }
 
   /* =======================================================
      LANDING MOBILE
