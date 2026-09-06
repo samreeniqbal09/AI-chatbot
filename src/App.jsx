@@ -148,12 +148,6 @@ function ChatApp() {
 
   /*
    * Conversation token.
-   *
-   * Every time the user starts/selects/deletes a chat,
-   * this number changes.
-   *
-   * A previous stream is therefore prevented from
-   * modifying the newly selected conversation.
    */
   const conversationRef = useRef(0)
 
@@ -189,19 +183,32 @@ function ChatApp() {
   }, [darkMode])
 
   /*
+   * ========================================
    * LOAD CHATS
+   * ========================================
    *
-   * Recent chats are ordered by updated_at.
+   * Loads all chats belonging to the current
+   * authenticated user.
    *
-   * If updated_at does not exist in the database,
-   * automatically fall back to created_at.
+   * We first try updated_at.
+   * If that column is unavailable, we fall
+   * back to created_at.
+   *
+   * The result is ALSO sorted locally so the
+   * sidebar remains correct even when some
+   * updated_at values are null.
    */
   const loadChats = useCallback(async () => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setChats([])
+      return
+    }
 
     try {
+      let chatData = null
+
       /*
-       * First try updated_at.
+       * Try updated_at first.
        */
       const {
         data: updatedChats,
@@ -212,41 +219,63 @@ function ChatApp() {
         .eq("user_id", user.id)
         .order("updated_at", {
           ascending: false,
+          nullsFirst: false,
         })
 
-      /*
-       * If updated_at exists, use it.
-       */
       if (!updatedError) {
-        setChats(updatedChats || [])
-        return
+        chatData = updatedChats || []
+      } else {
+        /*
+         * Fallback to created_at.
+         */
+        console.warn(
+          "updated_at unavailable, falling back to created_at:",
+          updatedError.message
+        )
+
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", {
+            ascending: false,
+          })
+
+        if (error) {
+          throw error
+        }
+
+        chatData = data || []
       }
 
       /*
-       * Fallback for databases that don't yet have
-       * an updated_at column.
+       * Normalize and sort locally.
+       *
+       * updated_at has priority.
+       * created_at is the fallback.
        */
-      console.warn(
-        "updated_at unavailable, falling back to created_at:",
-        updatedError.message
+      const sortedChats = [...chatData].sort(
+        (a, b) => {
+          const dateA = new Date(
+            a.updated_at ||
+              a.created_at ||
+              0
+          ).getTime()
+
+          const dateB = new Date(
+            b.updated_at ||
+              b.created_at ||
+              0
+          ).getTime()
+
+          return dateB - dateA
+        }
       )
 
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("chat_sessions")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", {
-          ascending: false,
-        })
-
-      if (error) {
-        throw error
-      }
-
-      setChats(data || [])
+      setChats(sortedChats)
     } catch (error) {
       console.error(
         "Load chats:",
@@ -255,24 +284,23 @@ function ChatApp() {
     }
   }, [user?.id])
 
+  /*
+   * Load chats when the user logs in.
+   */
   useEffect(() => {
     loadChats()
   }, [loadChats])
 
   /*
+   * ========================================
    * AUTO SCROLL
-   *
-   * While actively streaming, use "auto" (instant) instead of
-   * "smooth". Every incoming chunk updates `messages`, which
-   * re-triggers this effect - if each one starts a new smooth
-   * scroll animation before the previous one finishes, the
-   * viewport fights itself and looks shaky/jittery. Instant
-   * scroll during streaming avoids that, while completed
-   * messages still get a smooth scroll.
+   * ========================================
    */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
-      behavior: isStreaming ? "auto" : "smooth",
+      behavior: isStreaming
+        ? "auto"
+        : "smooth",
       block: "end",
     })
   }, [
@@ -282,7 +310,9 @@ function ChatApp() {
   ])
 
   /*
+   * ========================================
    * MOBILE SIDEBAR
+   * ========================================
    */
   useEffect(() => {
     const handleResize = () => {
@@ -308,7 +338,9 @@ function ChatApp() {
   }, [])
 
   /*
+   * ========================================
    * RATE LIMIT COUNTDOWN
+   * ========================================
    */
   useEffect(() => {
     if (!limitReached) return
@@ -334,7 +366,9 @@ function ChatApp() {
   }, [limitReached])
 
   /*
+   * ========================================
    * LOGOUT
+   * ========================================
    */
   const handleLogout = async () => {
     if (loading) return
@@ -353,10 +387,6 @@ function ChatApp() {
         return
       }
 
-      /*
-       * Invalidate any currently running
-       * conversation.
-       */
       conversationRef.current += 1
 
       setMessages([])
@@ -377,7 +407,9 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * CREATE CHAT
+   * ========================================
    */
   const createChat = async (
     text = "New Chat",
@@ -418,29 +450,60 @@ function ChatApp() {
     }
 
     /*
-     * Put newly-created chat at the top
-     * of Recent Chats immediately.
+     * Immediately add the new chat locally.
      */
-    setChats((prev) => [
-      data,
-      ...prev.filter(
-        (chat) =>
-          chat.id !== data.id
-      ),
-    ])
+    setChats((prev) => {
+      const newChats = [
+        data,
+        ...prev.filter(
+          (chat) =>
+            chat.id !== data.id
+        ),
+      ]
+
+      return newChats.sort(
+        (a, b) => {
+          const dateA = new Date(
+            a.updated_at ||
+              a.created_at ||
+              0
+          ).getTime()
+
+          const dateB = new Date(
+            b.updated_at ||
+              b.created_at ||
+              0
+          ).getTime()
+
+          return dateB - dateA
+        }
+      )
+    })
 
     if (shouldActivate) {
       setActiveChat(data.id)
+    }
+
+    /*
+     * Refresh from Supabase so the sidebar
+     * definitely contains the database record.
+     */
+    try {
+      await loadChats()
+    } catch (refreshError) {
+      console.warn(
+        "Could not refresh chats after creation:",
+        refreshError
+      )
     }
 
     return data
   }
 
   /*
+   * ========================================
    * MOVE CHAT TO TOP
-   *
-   * This gives the sidebar immediate feedback
-   * after a message is saved.
+   * ========================================
    */
   const moveChatToTop = (
     chatId
@@ -474,7 +537,9 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * PARSE STORED MESSAGE
+   * ========================================
    */
   const parseMessage = (message) => {
     let content =
@@ -510,7 +575,9 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * LOAD MESSAGES
+   * ========================================
    */
   const loadMessages = async (
     chatId
@@ -522,10 +589,6 @@ function ChatApp() {
       return
     }
 
-    /*
-     * Selecting another chat invalidates
-     * any previous stream.
-     */
     conversationRef.current += 1
 
     try {
@@ -592,13 +655,11 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * NEW CHAT
+   * ========================================
    */
   const handleNewChat = () => {
-    /*
-     * Immediately invalidate any existing
-     * streaming conversation.
-     */
     conversationRef.current += 1
 
     setMessages([])
@@ -614,7 +675,9 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * DELETE CHAT
+   * ========================================
    */
   const deleteChat = async (
     chatId
@@ -668,7 +731,9 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * RENAME CHAT
+   * ========================================
    */
   const renameChat = async (
     chatId,
@@ -728,7 +793,9 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * SAVE MESSAGE
+   * ========================================
    */
   const saveMessage = async (
     sessionId,
@@ -805,14 +872,7 @@ function ChatApp() {
     }
 
     /*
-     * Update chat activity time.
-     *
-     * If updated_at exists, this makes the chat
-     * move to the top even after page refresh.
-     *
-     * If the column does not exist yet, the error
-     * is ignored because the message itself was
-     * successfully saved.
+     * Update activity timestamp.
      */
     try {
       const {
@@ -845,15 +905,13 @@ function ChatApp() {
       )
     }
 
-    /*
-     * Immediately move this chat to the top
-     * of the sidebar.
-     */
     moveChatToTop(sessionId)
   }
 
   /*
+   * ========================================
    * BACKEND STREAMING
+   * ========================================
    */
   const askBackend = async (
     question,
@@ -1236,7 +1294,9 @@ function ChatApp() {
   }
 
   /*
+   * ========================================
    * SEND MESSAGE
+   * ========================================
    */
   const sendMessage = async (
     text,
@@ -1254,9 +1314,6 @@ function ChatApp() {
       return
     }
 
-    /*
-     * Capture the current conversation.
-     */
     const conversationId =
       conversationRef.current
 
@@ -1264,7 +1321,7 @@ function ChatApp() {
     setIsStreaming(false)
 
     /*
-     * Show USER message immediately.
+     * USER MESSAGE
      */
     const temporaryUserMessage = {
       id:
@@ -1286,10 +1343,6 @@ function ChatApp() {
     let streamCompleted = false
     let firstChunkReceived = false
 
-    /*
-     * Check whether this stream still belongs
-     * to the currently visible conversation.
-     */
     const isCurrentConversation = () =>
       conversationRef.current ===
       conversationId
@@ -1311,7 +1364,7 @@ function ChatApp() {
           }
 
           /*
-           * First chunk.
+           * FIRST CHUNK
            */
           if (!firstChunkReceived) {
             firstChunkReceived = true
@@ -1332,7 +1385,7 @@ function ChatApp() {
             ])
           } else {
             /*
-             * Append every new chunk.
+             * APPEND STREAMING CHUNK
              */
             setMessages((prev) =>
               prev.map(
@@ -1368,7 +1421,8 @@ function ChatApp() {
           }
 
           /*
-           * Backend final answer is source of truth.
+           * Backend final answer is source
+           * of truth.
            */
           if (
             typeof result?.answer ===
@@ -1382,10 +1436,6 @@ function ChatApp() {
           assistantImage =
             result?.image || null
 
-          /*
-           * If user moved to another
-           * conversation, don't touch its UI.
-           */
           if (
             !isCurrentConversation()
           ) {
@@ -1395,7 +1445,7 @@ function ChatApp() {
           }
 
           /*
-           * Handle final answer without chunks.
+           * Handle responses without chunks.
            */
           if (!assistantId) {
             assistantId =
@@ -1447,10 +1497,6 @@ function ChatApp() {
       const cleanAnswer =
         fullAnswer.trim()
 
-      /*
-       * If user switched conversations,
-       * don't save into new chat.
-       */
       if (
         !isCurrentConversation()
       ) {
@@ -1458,10 +1504,13 @@ function ChatApp() {
       }
 
       /*
-       * Capture the chat this message belongs to.
+       * GET CURRENT CHAT
        */
       let chatId = activeChat
 
+      /*
+       * FIRST MESSAGE = CREATE CHAT
+       */
       if (!chatId) {
         const shouldActivate =
           conversationRef.current ===
@@ -1477,9 +1526,6 @@ function ChatApp() {
         chatId = chat.id
       }
 
-      /*
-       * Make sure user didn't switch chats.
-       */
       if (
         !isCurrentConversation()
       ) {
@@ -1487,7 +1533,7 @@ function ChatApp() {
       }
 
       /*
-       * Save USER message exactly once.
+       * SAVE USER MESSAGE
        */
       await saveMessage(
         chatId,
@@ -1496,10 +1542,6 @@ function ChatApp() {
         image
       )
 
-      /*
-       * Make sure conversation wasn't
-       * changed during the save.
-       */
       if (
         !isCurrentConversation()
       ) {
@@ -1507,7 +1549,7 @@ function ChatApp() {
       }
 
       /*
-       * Update visible assistant message.
+       * UPDATE ASSISTANT MESSAGE
        */
       if (assistantId) {
         setMessages((prev) =>
@@ -1528,7 +1570,7 @@ function ChatApp() {
       }
 
       /*
-       * Save COMPLETE AI response exactly once.
+       * SAVE AI MESSAGE
        */
       await saveMessage(
         chatId,
@@ -1538,19 +1580,12 @@ function ChatApp() {
       )
 
       /*
-       * Make sure the chat stays at the top
-       * immediately.
+       * MOVE TO TOP
        */
       moveChatToTop(chatId)
 
       /*
-       * Refresh sidebar from Supabase.
-       *
-       * If updated_at exists, the refreshed list
-       * will remain correctly ordered.
-       *
-       * If it doesn't, the fallback ordering
-       * will still work.
+       * FINAL REFRESH
        */
       if (
         isCurrentConversation()
@@ -1563,10 +1598,6 @@ function ChatApp() {
         error
       )
 
-      /*
-       * If this is an old conversation,
-       * don't show its error.
-       */
       if (
         !isCurrentConversation()
       ) {
@@ -1574,7 +1605,7 @@ function ChatApp() {
       }
 
       /*
-       * Remove partial assistant response.
+       * REMOVE PARTIAL ASSISTANT
        */
       if (assistantId) {
         setMessages((prev) =>
@@ -1587,7 +1618,7 @@ function ChatApp() {
       }
 
       /*
-       * RATE LIMIT ERROR
+       * RATE LIMIT
        */
       if (
         error?.isRateLimit ||
@@ -1663,9 +1694,6 @@ function ChatApp() {
         },
       ])
     } finally {
-      /*
-       * Always unlock the UI.
-       */
       setLoading(false)
       setIsStreaming(false)
     }
@@ -1880,16 +1908,6 @@ function ChatApp() {
                 </motion.div>
               )}
 
-              {/*
-                IMPORTANT:
-                Typing indicator is shown only
-                while waiting for the FIRST
-                streaming chunk.
-
-                Once the first chunk arrives,
-                isStreaming becomes true and
-                this indicator disappears.
-              */}
               {loading &&
                 !isStreaming && (
                   <motion.div
