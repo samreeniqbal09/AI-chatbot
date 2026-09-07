@@ -1122,11 +1122,8 @@ function ChatApp() {
     }
 
     /*
-     * Capture the current conversation.
-     *
-     * If the user later clicks New Chat or selects
-     * another chat, conversationRef.current changes
-     * and this stream becomes stale.
+     * Capture the conversation at the moment
+     * the user sends the message.
      */
     const conversationId =
       conversationRef.current
@@ -1165,7 +1162,58 @@ function ChatApp() {
       conversationRef.current ===
       conversationId
 
+    /*
+     * IMPORTANT:
+     * Create the chat and save the USER message
+     * immediately, before waiting for the AI.
+     *
+     * This guarantees the conversation is already
+     * stored in Supabase and visible in Recent Chats
+     * even if the user clicks New Chat while the AI
+     * is still streaming.
+     */
+    let chatId = activeChat
+
     try {
+      if (!chatId) {
+        const chat =
+          await createChat(
+            cleanText ||
+              "Image conversation",
+            false
+          )
+
+        chatId = chat.id
+
+        /*
+         * Only activate the new chat if the user
+         * is still viewing the same conversation.
+         */
+        if (
+          isCurrentConversation()
+        ) {
+          setActiveChat(chatId)
+        }
+      }
+
+      /*
+       * Save USER message immediately.
+       *
+       * Do NOT check isCurrentConversation() here.
+       * The message belongs to chatId even if the
+       * user switches to another conversation.
+       */
+      await saveMessage(
+        chatId,
+        "user",
+        cleanText,
+        image
+      )
+
+      /*
+       * Start the AI request only after the chat
+       * and user message are safely stored.
+       */
       await askBackend(
         cleanText,
         image,
@@ -1267,8 +1315,8 @@ function ChatApp() {
            * If the user has moved to another
            * conversation, don't touch its UI.
            *
-           * We still allow the current function
-           * to finish safely.
+           * The assistant response will still be
+           * saved below using the original chatId.
            */
           if (
             !isCurrentConversation()
@@ -1338,93 +1386,13 @@ function ChatApp() {
         fullAnswer.trim()
 
       /*
-       * If the user switched conversations
-       * while the stream was running, don't save
-       * this response into the newly selected chat.
-       */
-      if (
-        !isCurrentConversation()
-      ) {
-        return
-      }
-
-      /*
-       * Capture the chat this message belongs to.
-       */
-      let chatId = activeChat
-
-      if (!chatId) {
-        /*
-         * Only activate the newly-created chat
-         * if the user is still in the same conversation.
-         */
-        const shouldActivate =
-          conversationRef.current ===
-          conversationId
-
-        const chat =
-          await createChat(
-            cleanText ||
-              "Image conversation",
-            shouldActivate
-          )
-
-        chatId = chat.id
-      }
-
-      /*
-       * Make sure the user didn't switch chats
-       * while the Supabase request was running.
-       */
-      if (
-        !isCurrentConversation()
-      ) {
-        return
-      }
-
-      /*
-       * Save USER message exactly once.
-       */
-      await saveMessage(
-        chatId,
-        "user",
-        cleanText,
-        image
-      )
-
-      /*
-       * Make sure the conversation wasn't
-       * changed during the save.
-       */
-      if (
-        !isCurrentConversation()
-      ) {
-        return
-      }
-
-      /*
-       * Update visible assistant message.
-       */
-      if (assistantId) {
-        setMessages((prev) =>
-          prev.map(
-            (message) =>
-              message.id ===
-                assistantId
-                ? {
-                    ...message,
-                    content:
-                      cleanAnswer,
-                    image:
-                      assistantImage,
-                  }
-                : message
-          )
-        )
-      }
-
-      /*
-       * Save COMPLETE AI response exactly once.
+       * IMPORTANT:
+       * Do NOT check isCurrentConversation()
+       * before saving the assistant response.
+       *
+       * chatId is the original chat this message
+       * belongs to, so it must still be saved even
+       * if the user has already switched chats.
        */
       await saveMessage(
         chatId,
@@ -1434,12 +1402,30 @@ function ChatApp() {
       )
 
       /*
-       * Refresh sidebar only if the user
-       * is still viewing the same conversation.
+       * Only update the visible UI/sidebar if the
+       * user is still viewing the original chat.
        */
       if (
         isCurrentConversation()
       ) {
+        if (assistantId) {
+          setMessages((prev) =>
+            prev.map(
+              (message) =>
+                message.id ===
+                  assistantId
+                  ? {
+                      ...message,
+                      content:
+                        cleanAnswer,
+                      image:
+                        assistantImage,
+                    }
+                  : message
+            )
+          )
+        }
+
         await loadChats()
       }
     } catch (error) {
