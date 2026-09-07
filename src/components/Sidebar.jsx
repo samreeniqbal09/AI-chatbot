@@ -58,6 +58,7 @@ function Sidebar({
 
       setIsMobile(mobile)
 
+      // Desktop: sidebar stays open
       if (!mobile) {
         setSidebarOpen(true)
       }
@@ -368,7 +369,7 @@ function Sidebar({
       </AnimatePresence>
 
       {/* =====================================================
-          SIDEBAR
+          DYNAMIC SIDEBAR
       ===================================================== */}
 
       <motion.aside
