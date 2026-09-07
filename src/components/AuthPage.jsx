@@ -173,6 +173,7 @@ export default function AuthPage({ onBack }) {
 
                     <input
                       id="lumora-forgot-email"
+                      name="email"
                       type="email"
                       value={email}
                       onChange={(e) =>
@@ -292,6 +293,7 @@ export default function AuthPage({ onBack }) {
 
                     <input
                       id="lumora-email"
+                      name="email"
                       type="email"
                       value={email}
                       onChange={(e) =>
@@ -330,6 +332,7 @@ export default function AuthPage({ onBack }) {
 
                     <input
                       id="lumora-password"
+                      name="password"
                       type={
                         showPassword
                           ? "text"
