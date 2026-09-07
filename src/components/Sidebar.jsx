@@ -59,7 +59,7 @@ function Sidebar({
       setIsMobile(mobile)
 
       if (!mobile) {
-        setSidebarOpen(false)
+        setSidebarOpen(true)
       }
     }
 
@@ -408,7 +408,9 @@ function Sidebar({
               whileTap={{ scale: 0.96 }}
               className="brand-icon shrink-0"
             >
-              <LumoraIcon size={36} />
+              <LumoraIcon
+                size={isMobile ? 44 : 52}
+              />
             </motion.div>
 
             <div>
@@ -495,8 +497,6 @@ function Sidebar({
           }}
         >
 
-          {/* RECENT HEADING */}
-
           <button
             className="section-heading"
             type="button"
@@ -554,10 +554,6 @@ function Sidebar({
                 }}
               >
 
-                {/* =================================================
-                    PINNED CHATS
-                ================================================= */}
-
                 {pinned.length > 0 && (
                   <>
                     <div className="history-subheading">
@@ -595,10 +591,6 @@ function Sidebar({
                     ))}
                   </>
                 )}
-
-                {/* =================================================
-                    RECENT CHATS
-                ================================================= */}
 
                 {recent.length > 0 && (
                   <>
@@ -638,10 +630,6 @@ function Sidebar({
                     ))}
                   </>
                 )}
-
-                {/* =================================================
-                    EMPTY STATE
-                ================================================= */}
 
                 {!filteredChats.length && (
                   <div className="empty-history">
@@ -716,13 +704,6 @@ function ChatItem({
   onAddToProject,
   onDelete,
 }) {
-  /*
-   * IMPORTANT:
-   * The chat row itself selects the conversation.
-   * The three-dot menu and every menu action stop their
-   * pointer/click events so the parent row cannot intercept them.
-   */
-
   const stopMenuEvent = (event) => {
     event.preventDefault()
     event.stopPropagation()
@@ -756,10 +737,6 @@ function ChatItem({
       }}
     >
 
-      {/* =====================================================
-          CHAT ICON
-      ===================================================== */}
-
       <div className="chat-item-icon">
         {pinned ? (
           <Pin size={14} />
@@ -768,17 +745,9 @@ function ChatItem({
         )}
       </div>
 
-      {/* =====================================================
-          CHAT TITLE
-      ===================================================== */}
-
       <span className="chat-title">
         {chat.title || "New Chat"}
       </span>
-
-      {/* =====================================================
-          THREE DOTS
-      ===================================================== */}
 
       <button
         className={`chat-menu-button ${
@@ -814,10 +783,6 @@ function ChatItem({
         <MoreHorizontal size={18} />
       </button>
 
-      {/* =====================================================
-          CHAT OPTIONS MENU
-      ===================================================== */}
-
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -849,10 +814,6 @@ function ChatItem({
             }}
           >
 
-            {/* =================================================
-                PIN / UNPIN
-            ================================================= */}
-
             <button
               type="button"
               onPointerDown={stopMenuEvent}
@@ -868,10 +829,6 @@ function ChatItem({
               </span>
             </button>
 
-            {/* =================================================
-                RENAME
-            ================================================= */}
-
             <button
               type="button"
               onPointerDown={stopMenuEvent}
@@ -884,10 +841,6 @@ function ChatItem({
 
               <span>Rename</span>
             </button>
-
-            {/* =================================================
-                ADD TO PROJECT
-            ================================================= */}
 
             <button
               type="button"
@@ -903,10 +856,6 @@ function ChatItem({
             </button>
 
             <div className="menu-divider" />
-
-            {/* =================================================
-                DELETE
-            ================================================= */}
 
             <button
               className="delete-option"
