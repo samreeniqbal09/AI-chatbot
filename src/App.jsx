@@ -1608,7 +1608,7 @@ function ChatApp() {
 
           <div className="header-center">
             <div className="header-logo">
-              <LumoraIcon size={32} />
+              <LumoraIcon size={38} />
             </div>
 
             <div className="header-brand-text">
@@ -1684,7 +1684,7 @@ function ChatApp() {
                   opacity: 1,
                 }}
               >
-                <LumoraIcon size={40} />
+                <LumoraIcon size={56} />
               </motion.div>
 
               <h1>
@@ -1779,7 +1779,7 @@ function ChatApp() {
                     }}
                   >
                     <div className="typing-avatar">
-                      <LumoraIcon size={16} />
+                      <LumoraIcon size={18} />
                     </div>
 
                     <div className="typing-indicator">
