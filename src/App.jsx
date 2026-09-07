@@ -240,16 +240,23 @@ function ChatApp() {
 
   /*
    * MOBILE SIDEBAR
+   *
+   * Desktop keeps the sidebar open.
+   * Mobile keeps the current state so the
+   * menu button can open and close it.
    */
   useEffect(() => {
     const handleResize = () => {
-      if (
-        window.innerWidth >=
+      const isMobile =
+        window.innerWidth <
         MOBILE_BREAKPOINT
-      ) {
-        setSidebarOpen(false)
+
+      if (!isMobile) {
+        setSidebarOpen(true)
       }
     }
+
+    handleResize()
 
     window.addEventListener(
       "resize",
@@ -956,7 +963,8 @@ function ChatApp() {
       }
 
       if (
-        payload?.type === "error"
+        payload?.type ===
+          "error"
       ) {
         throw new Error(
           payload.error ||
@@ -1755,16 +1763,6 @@ function ChatApp() {
                 </motion.div>
               )}
 
-              {/*
-                IMPORTANT:
-                Typing indicator is shown only
-                while waiting for the FIRST
-                streaming chunk.
-
-                Once the first chunk arrives,
-                isStreaming becomes true and
-                this indicator disappears.
-              */}
               {loading &&
                 !isStreaming && (
                   <motion.div
