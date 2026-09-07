@@ -716,6 +716,18 @@ function ChatItem({
   onAddToProject,
   onDelete,
 }) {
+  /*
+   * IMPORTANT:
+   * The chat row itself selects the conversation.
+   * The three-dot menu and every menu action stop their
+   * pointer/click events so the parent row cannot intercept them.
+   */
+
+  const stopMenuEvent = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
   return (
     <motion.div
       className={`chat-item ${
@@ -727,9 +739,10 @@ function ChatItem({
           ? "chat-item-menu-open"
           : ""
       }`}
-      onClick={(event) =>
+      onClick={(event) => {
+        if (menuOpen) return
         onSelectChat(chat.id, event)
-      }
+      }}
       whileHover={
         !menuOpen
           ? { x: 2 }
@@ -743,7 +756,9 @@ function ChatItem({
       }}
     >
 
-      {/* CHAT ICON */}
+      {/* =====================================================
+          CHAT ICON
+      ===================================================== */}
 
       <div className="chat-item-icon">
         {pinned ? (
@@ -753,13 +768,17 @@ function ChatItem({
         )}
       </div>
 
-      {/* CHAT TITLE */}
+      {/* =====================================================
+          CHAT TITLE
+      ===================================================== */}
 
       <span className="chat-title">
         {chat.title || "New Chat"}
       </span>
 
-      {/* THREE DOTS */}
+      {/* =====================================================
+          THREE DOTS
+      ===================================================== */}
 
       <button
         className={`chat-menu-button ${
@@ -768,6 +787,10 @@ function ChatItem({
             : ""
         }`}
         type="button"
+        onPointerDown={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
@@ -817,24 +840,26 @@ function ChatItem({
             transition={{
               duration: 0.12,
             }}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
+            onPointerDown={stopMenuEvent}
+            onClick={stopMenuEvent}
             style={{
               position: "absolute",
-              zIndex: 1000,
+              zIndex: 9999,
               pointerEvents: "auto",
             }}
           >
 
-            {/* PIN */}
+            {/* =================================================
+                PIN / UNPIN
+            ================================================= */}
 
             <button
               type="button"
-              onClick={(event) =>
+              onPointerDown={stopMenuEvent}
+              onClick={(event) => {
+                stopMenuEvent(event)
                 onTogglePin(chat.id, event)
-              }
+              }}
             >
               <Pin size={14} />
 
@@ -843,26 +868,34 @@ function ChatItem({
               </span>
             </button>
 
-            {/* RENAME */}
+            {/* =================================================
+                RENAME
+            ================================================= */}
 
             <button
               type="button"
-              onClick={(event) =>
+              onPointerDown={stopMenuEvent}
+              onClick={(event) => {
+                stopMenuEvent(event)
                 onRename(chat, event)
-              }
+              }}
             >
               <Pencil size={14} />
 
               <span>Rename</span>
             </button>
 
-            {/* ADD TO PROJECT */}
+            {/* =================================================
+                ADD TO PROJECT
+            ================================================= */}
 
             <button
               type="button"
-              onClick={(event) =>
+              onPointerDown={stopMenuEvent}
+              onClick={(event) => {
+                stopMenuEvent(event)
                 onAddToProject(chat, event)
-              }
+              }}
             >
               <FolderPlus size={14} />
 
@@ -871,14 +904,18 @@ function ChatItem({
 
             <div className="menu-divider" />
 
-            {/* DELETE */}
+            {/* =================================================
+                DELETE
+            ================================================= */}
 
             <button
               className="delete-option"
               type="button"
-              onClick={(event) =>
+              onPointerDown={stopMenuEvent}
+              onClick={(event) => {
+                stopMenuEvent(event)
                 onDelete(chat.id, event)
-              }
+              }}
             >
               <Trash2 size={14} />
 
