@@ -528,8 +528,8 @@ function Sidebar({
               <LumoraIcon
                 size={
                   isMobile
-                    ? 44
-                    : 46
+                    ? 32
+                    : 36
                 }
               />
             </motion.div>

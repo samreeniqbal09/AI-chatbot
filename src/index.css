@@ -694,23 +694,32 @@ body.dark .lumora-auth-footer,
   min-width: 0;
 }
 
-/* SIDEBAR LOGO */
-.brand-icon,
-.header-logo,
-.message-avatar,
-.typing-avatar,
-.quick-prompt-icon {
-  display: grid;
-  place-items: center;
-}
+/* =========================================================
+   SIDEBAR LOGO — RESPONSIVE SIZING & STYLING
+========================================================= */
 
 .brand-icon {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 12px;
-  background: transparent;
+  background: #f5e9fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.app.dark .brand-icon {
+  background: #3a1a66;
+  color: #e9c9fb;
+}
+
+.brand-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .brand-icon-img {
@@ -955,34 +964,49 @@ body.dark .lumora-auth-footer,
 }
 
 /* =========================================================
-   CHAT MENU
+   CHAT MENU — SOLID BUTTONS (NOT TRANSPARENT)
 ========================================================= */
 
 .chat-menu-button {
   position: relative;
   z-index: 20;
-  width: 25px;
-  height: 25px;
-  padding: 2px;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 5px;
-  background: transparent;
+  border-radius: 6px;
+  background: rgba(168, 85, 232, 0.08);
   color: var(--muted);
-  opacity: 0;
+  opacity: 1;
+  transition: all 0.2s ease;
 }
 
 .chat-item:hover .chat-menu-button,
 .chat-menu-button:focus-visible,
 .chat-menu-button-active {
+  background: var(--primary);
+  color: #fff;
   opacity: 1;
 }
 
 .chat-menu-button:hover {
-  background: var(--border);
-  color: var(--text);
+  background: var(--primary);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.app.dark .chat-menu-button {
+  background: rgba(190, 100, 250, 0.12);
+  color: #a1a1aa;
+}
+
+.app.dark .chat-item:hover .chat-menu-button,
+.app.dark .chat-menu-button-active {
+  background: #be64fa;
+  color: #fff;
 }
 
 .chat-options-menu {
@@ -1019,6 +1043,7 @@ body.dark .lumora-auth-footer,
   font-weight: 500;
   text-align: left;
   white-space: nowrap;
+  transition: all 0.15s ease;
 }
 
 .chat-options-menu button:hover {
@@ -1204,6 +1229,7 @@ body.dark .lumora-auth-footer,
   background: #3a1a66;
   color: #e9c9fb;
 }
+
 /* ---------------------------------------------------------
    MOBILE SIDEBAR
 --------------------------------------------------------- */
@@ -1221,8 +1247,6 @@ body.dark .lumora-auth-footer,
     display: flex;
     flex-direction: column;
     overflow: hidden;
-
-    /* Motion controls the slide position */
     z-index: 100;
     box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
   }
@@ -1276,11 +1300,18 @@ body.dark .lumora-auth-footer,
   }
 
   .chat-menu-button {
-    min-width: 34px;
-    min-height: 34px;
+    min-width: 32px;
+    min-height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: rgba(168, 85, 232, 0.1);
+  }
+
+  .chat-menu-button:hover,
+  .chat-menu-button-active {
+    background: var(--primary);
+    color: #fff;
   }
 
   .section-heading {
@@ -1290,7 +1321,18 @@ body.dark .lumora-auth-footer,
   .logout-button {
     min-height: 42px;
   }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand-icon svg {
+    width: 22px;
+    height: 22px;
+  }
 }
+
 /* =========================================================
    MAIN CHAT
 ========================================================= */
@@ -1343,13 +1385,23 @@ body.dark .lumora-auth-footer,
 .header-center {
   gap: 8px;
 }
+
 .header-logo {
-  width: 29px;
-  height: 29px;
+  width: 36px;
+  height: 36px;
   overflow: hidden;
   border-radius: 10px;
   background: #f5e9fd;
   color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app.dark .header-logo {
+  background: #3a1a66;
+  color: #e9c9fb;
 }
 
 .header-logo img {
@@ -1359,6 +1411,13 @@ body.dark .lumora-auth-footer,
   object-fit: cover;
   border-radius: 10px;
 }
+
+.header-logo svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
 .header-title {
   font-size: 13px;
   font-weight: 700;
@@ -1421,26 +1480,49 @@ body.dark .lumora-auth-footer,
   max-width: min(80%, 760px);
   min-width: 0;
 }
+
 .message-avatar {
-  width:29px;
-  height:29px;
-  flex-shrink:0;
-  overflow:hidden;
-  border-radius:10px;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5e9fd;
+  color: var(--primary);
+}
+
+.app.dark .message-avatar {
+  background: #3a1a66;
+  color: #e9c9fb;
 }
 
 .message-avatar img {
-  width:100%;
-  height:100%;
-  display:block;
-  object-fit:cover;
-  border-radius:10px;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.message-avatar svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .ai-avatar,
 .typing-avatar {
   background: #f5e9fd;
   color: var(--primary);
+}
+
+.app.dark .ai-avatar,
+.app.dark .typing-avatar {
+  background: #3a1a66;
+  color: #e9c9fb;
 }
 
 .user-avatar {
@@ -1481,6 +1563,7 @@ body.dark .lumora-auth-footer,
   object-fit: contain;
   border-radius: 10px;
 }
+
 /* =========================================================
    TYPING
 ========================================================= */
@@ -1493,11 +1576,21 @@ body.dark .lumora-auth-footer,
 }
 
 .typing-avatar {
-  width: 27px;
-  height: 27px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5e9fd;
+  color: var(--primary);
+}
+
+.app.dark .typing-avatar {
+  background: #3a1a66;
+  color: #e9c9fb;
 }
 
 .typing-avatar img {
@@ -1506,6 +1599,12 @@ body.dark .lumora-auth-footer,
   display: block;
   object-fit: cover;
   border-radius: 10px;
+}
+
+.typing-avatar svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .typing-indicator {
@@ -1544,16 +1643,21 @@ body.dark .lumora-auth-footer,
 }
 
 .welcome-icon {
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   margin: 0 auto 14px;
   display: grid;
   place-items: center;
   overflow: hidden;
   border-radius: 16px;
-  background: linear-gradient(135deg, #a855e8, #9b3fe0);
-  color: #fff;
+  background: #f5e9fd;
+  color: var(--primary);
   box-shadow: 0 10px 24px rgba(168, 85, 232, 0.18);
+}
+
+.app.dark .welcome-icon {
+  background: #3a1a66;
+  color: #e9c9fb;
 }
 
 .welcome-icon img {
@@ -1562,6 +1666,12 @@ body.dark .lumora-auth-footer,
   display: block;
   object-fit: cover;
   border-radius: 16px;
+}
+
+.welcome-icon svg {
+  width: 34px;
+  height: 34px;
+  display: block;
 }
 
 /* =========================================================
@@ -1612,6 +1722,14 @@ body.dark .lumora-auth-footer,
   border-radius: 8px;
   background: #f5e9fd;
   color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app.dark .quick-prompt-icon {
+  background: #3a1a66;
+  color: #e9c9fb;
 }
 
 .quick-prompt-content {
@@ -2045,6 +2163,7 @@ body.dark .lumora-auth-footer,
   color: var(--text);
   overflow-x: hidden;
 }
+
 /* ---------------------------------------------------------
    Landing Navbar
 --------------------------------------------------------- */
@@ -2074,13 +2193,20 @@ body.dark .lumora-auth-footer,
 }
 
 .landing-brand-icon {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   overflow: hidden;
   display: grid;
   place-items: center;
   border-radius: 10px;
   flex-shrink: 0;
+  background: #f5e9fd;
+  color: var(--primary);
+}
+
+.app.dark .landing-brand-icon {
+  background: #3a1a66;
+  color: #e9c9fb;
 }
 
 .landing-brand-icon img {
@@ -2089,6 +2215,12 @@ body.dark .lumora-auth-footer,
   display: block;
   object-fit: cover;
   border-radius: 10px;
+}
+
+.landing-brand-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .landing-brand-name {
@@ -2156,6 +2288,7 @@ body.dark .lumora-auth-footer,
   background: linear-gradient(135deg, #8b3fc0, #7c2fb0);
   transform: translateY(-1px);
 }
+
 /* ---------------------------------------------------------
    Hero
 --------------------------------------------------------- */
@@ -2647,6 +2780,7 @@ body.dark .lumora-auth-footer,
     transform: scale(0.75);
   }
 }
+
 /* =========================================================
    TABLET / MOBILE SIDEBAR
 ========================================================= */
@@ -2668,9 +2802,6 @@ body.dark .lumora-auth-footer,
     flex-direction: column;
 
     overflow: hidden;
-
-    /* Motion controls the slide position */
-    transform: none !important;
 
     z-index: 100;
     box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
@@ -3024,92 +3155,5 @@ body.dark .lumora-auth-footer,
     height: 38px;
     min-height: 38px;
     flex-basis: 38px;
-  }
-}
-
-
-/* =========================================================
-   LUMORA LOGO — RESPONSIVE SIZING
-========================================================= */
-
-.header-logo {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.welcome-icon {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.typing-avatar {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-
-/* =========================================================
-   MOBILE LOGO SIZES
-========================================================= */
-
-@media (max-width: 900px) {
-
-  .header-logo {
-    width: 36px;
-    height: 36px;
-  }
-
-  .welcome-icon {
-    width: 48px;
-    height: 48px;
-  }
-
-  .typing-avatar {
-    width: 28px;
-    height: 28px;
-  }
-}
-
-
-/* =========================================================
-   SIDEBAR LOGO — RESPONSIVE SIZING
-========================================================= */
-
-.brand-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.brand-icon svg {
-  width: 36px;
-  height: 36px;
-}
-
-@media (max-width: 900px) {
-
-  .brand-icon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .brand-icon svg {
-    width: 32px;
-    height: 32px;
   }
 }
