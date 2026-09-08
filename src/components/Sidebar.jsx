@@ -545,27 +545,7 @@ function Sidebar({
             </div>
           </div>
 
-          {/* =================================================
-              MOBILE SIDEBAR TOGGLE
-          ================================================= */}
 
-          {isMobile && (
-            <motion.button
-              type="button"
-              className="sidebar-toggle-button"
-              onClick={toggleSidebar}
-              whileHover={{
-                scale: 1.05,
-              }}
-              whileTap={{
-                scale: 0.94,
-              }}
-              aria-label="Close sidebar"
-              title="Close sidebar"
-            >
-              <X size={18} />
-            </motion.button>
-          )}
         </div>
 
         {/* =================================================

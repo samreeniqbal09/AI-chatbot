@@ -176,9 +176,9 @@ a {
   place-items: center;
   overflow: hidden;
   border-radius: 12px;
-  background: linear-gradient(135deg, #a855e8, #9b3fe0);
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(168, 85, 232, 0.22);
+  background: #f5e9fd;
+  color: var(--primary);
+  box-shadow: 0 4px 12px rgba(168, 85, 232, 0.12);
 }
 
 .lumora-auth-brand-icon img {
@@ -187,6 +187,12 @@ a {
   display: block;
   object-fit: cover;
   border-radius: 12px;
+}
+
+.lumora-auth-brand-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .lumora-auth-brand-name {
@@ -550,6 +556,14 @@ body.dark .lumora-auth-glow,
   background: rgba(168, 85, 232, 0.14);
 }
 
+html.dark .lumora-auth-brand-icon,
+body.dark .lumora-auth-brand-icon,
+.lumora-auth.dark .lumora-auth-brand-icon {
+  background: #3a1a66;
+  color: #e9c9fb;
+  box-shadow: 0 4px 12px rgba(190, 100, 250, 0.12);
+}
+
 html.dark .lumora-auth-brand-name,
 body.dark .lumora-auth-brand-name,
 .lumora-auth.dark .lumora-auth-brand-name,
@@ -709,6 +723,8 @@ body.dark .lumora-auth-footer,
   align-items: center;
   justify-content: center;
   color: var(--primary);
+  opacity: 1;
+  z-index: 1;
 }
 
 .app.dark .brand-icon {
@@ -720,6 +736,7 @@ body.dark .lumora-auth-footer,
   width: 24px;
   height: 24px;
   display: block;
+  opacity: 1;
 }
 
 .brand-icon-img {
@@ -1025,6 +1042,7 @@ body.dark .lumora-auth-footer,
     0 3px 8px rgba(0, 0, 0, 0.07);
   isolation: isolate;
   overflow: hidden;
+  backdrop-filter: none;
 }
 
 .chat-options-menu button {
@@ -1044,6 +1062,8 @@ body.dark .lumora-auth-footer,
   text-align: left;
   white-space: nowrap;
   transition: all 0.15s ease;
+  opacity: 1;
+  z-index: 1001;
 }
 
 .chat-options-menu button:hover {
@@ -1297,6 +1317,56 @@ body.dark .lumora-auth-footer,
 
   .chat-options-menu {
     z-index: 9999;
+    background: var(--surface);
+    opacity: 1;
+  }
+
+  .chat-options-menu button {
+    background: var(--surface);
+    opacity: 1;
+    color: var(--text);
+  }
+
+  .chat-options-menu button:hover {
+    background: var(--surface-2);
+    opacity: 1;
+  }
+
+  .app.dark .chat-options-menu {
+    background: #1f0f45;
+  }
+
+  .app.dark .chat-options-menu button {
+    background: #1f0f45;
+    color: #f4f4f5;
+    opacity: 1;
+  }
+
+  .app.dark .chat-options-menu button:hover {
+    background: #2a1655;
+    opacity: 1;
+  }
+
+  .chat-options-menu .delete-option {
+    color: var(--danger);
+    opacity: 1;
+    background: var(--surface);
+  }
+
+  .chat-options-menu .delete-option:hover {
+    background: #fef2f2;
+    color: var(--danger);
+    opacity: 1;
+  }
+
+  .app.dark .chat-options-menu .delete-option {
+    color: #fca5a5;
+    background: #1f0f45;
+  }
+
+  .app.dark .chat-options-menu .delete-option:hover {
+    background: #2a1717;
+    color: #fca5a5;
   }
 
   .chat-menu-button {
@@ -2193,20 +2263,22 @@ body.dark .lumora-auth-footer,
 }
 
 .landing-brand-icon {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   overflow: hidden;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 12px;
   flex-shrink: 0;
   background: #f5e9fd;
   color: var(--primary);
+  box-shadow: 0 4px 12px rgba(168, 85, 232, 0.12);
 }
 
 .app.dark .landing-brand-icon {
   background: #3a1a66;
   color: #e9c9fb;
+  box-shadow: 0 4px 12px rgba(190, 100, 250, 0.12);
 }
 
 .landing-brand-icon img {
@@ -2214,12 +2286,12 @@ body.dark .lumora-auth-footer,
   height: 100%;
   display: block;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .landing-brand-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: block;
 }
 
@@ -2949,8 +3021,9 @@ body.dark .lumora-auth-footer,
   }
 
   .landing-brand-icon {
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
   }
 
   .landing-login,
