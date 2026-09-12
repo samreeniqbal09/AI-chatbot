@@ -17,6 +17,9 @@ MAX_QUESTION_LENGTH = 12000
 # Maximum messages allowed per user in one hour
 MESSAGE_LIMIT = 100
 
+# Maximum time allowed for OpenRouter requests
+OPENROUTER_TIMEOUT = 60.0
+
 
 # =========================================================
 # HANDLER
@@ -449,10 +452,9 @@ class handler(BaseHTTPRequestHandler):
             # -------------------------------------------------
 
             client = OpenAI(
-                base_url=(
-                    "https://openrouter.ai/api/v1"
-                ),
+                base_url="https://openrouter.ai/api/v1",
                 api_key=api_key,
+                timeout=OPENROUTER_TIMEOUT,
             )
 
             # -------------------------------------------------
@@ -488,6 +490,7 @@ class handler(BaseHTTPRequestHandler):
                 client.chat.completions.create(
                     model="qwen/qwen3.7-flash",
                     messages=openrouter_messages,
+                    timeout=OPENROUTER_TIMEOUT,
                 )
             )
 
@@ -605,8 +608,10 @@ class handler(BaseHTTPRequestHandler):
 
             stream_started = True
 
-            # Initial SSE comment helps establish and flush
-            # the connection before the model starts generating.
+            # -------------------------------------------------
+            # CONNECTION TEST
+            # -------------------------------------------------
+
             self.wfile.write(
                 b": connected\n\n"
             )
@@ -617,10 +622,19 @@ class handler(BaseHTTPRequestHandler):
             # START OPENROUTER STREAM
             # -------------------------------------------------
 
+            print(
+                "OPENROUTER: Starting stream"
+            )
+
             stream = client.chat.completions.create(
                 model="qwen/qwen3.7-flash",
                 messages=messages,
                 stream=True,
+                timeout=OPENROUTER_TIMEOUT,
+            )
+
+            print(
+                "OPENROUTER: Stream connected"
             )
 
             # -------------------------------------------------
@@ -630,6 +644,9 @@ class handler(BaseHTTPRequestHandler):
             full_answer = ""
 
             for chunk in stream:
+
+                if not chunk:
+                    continue
 
                 if not chunk.choices:
                     continue
@@ -680,6 +697,10 @@ class handler(BaseHTTPRequestHandler):
             # STREAM COMPLETE
             # -------------------------------------------------
 
+            print(
+                "OPENROUTER: Stream completed"
+            )
+
             self.write_sse(
                 {
                     "type": "done",
@@ -689,6 +710,10 @@ class handler(BaseHTTPRequestHandler):
                         "remaining"
                     ),
                 }
+            )
+
+            print(
+                "OPENROUTER: Done event sent"
             )
 
         except Exception as error:
