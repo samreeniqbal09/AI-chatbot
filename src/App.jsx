@@ -870,11 +870,21 @@ function ChatApp() {
 
   /*
    * BACKEND STREAMING
+   *
+   * IMPORTANT:
+   * history contains all previously completed
+   * user + assistant messages in chronological
+   * order.
+   *
+   * The current question is NOT placed inside
+   * history because the backend appends it as
+   * the newest user message.
    */
   const askBackend =
     async (
       question,
       image,
+      history,
       onChunk,
       onDone
     ) => {
@@ -919,6 +929,7 @@ function ChatApp() {
             body: JSON.stringify({
               question,
               image,
+              history,
             }),
           }
         )
@@ -1296,6 +1307,46 @@ function ChatApp() {
       const conversationId =
         conversationRef.current
 
+      /*
+       * IMPORTANT:
+       *
+       * Build history BEFORE adding the current
+       * temporary user message to React state.
+       *
+       * Therefore:
+       *
+       * history =
+       *   previous user message
+       *   previous assistant answer
+       *   previous user message
+       *   previous assistant answer
+       *
+       * The backend will append the CURRENT
+       * question after this history.
+       */
+      const conversationHistory =
+        messages
+          .filter(
+            (message) =>
+              (
+                message.role ===
+                  "user" ||
+                message.role ===
+                  "assistant"
+              ) &&
+              typeof message.content ===
+                "string" &&
+              message.content.trim()
+          )
+          .map(
+            (message) => ({
+              role:
+                message.role,
+              content:
+                message.content.trim(),
+            })
+          )
+
       setLoading(true)
       setIsStreaming(false)
 
@@ -1390,6 +1441,7 @@ function ChatApp() {
         await askBackend(
           cleanText,
           image,
+          conversationHistory,
           (chunk) => {
             if (
               !chunk ||

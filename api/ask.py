@@ -246,6 +246,73 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # -------------------------------------------------
+            # CONVERSATION HISTORY
+            # -------------------------------------------------
+
+            history = data.get(
+                "history",
+                []
+            )
+
+            if history is None:
+                history = []
+
+            if not isinstance(history, list):
+                self.send_json(
+                    {
+                        "error": (
+                            "Invalid conversation history."
+                        )
+                    },
+                    400
+                )
+                return
+
+            clean_history = []
+
+            for message in history:
+
+                if not isinstance(
+                    message,
+                    dict
+                ):
+                    continue
+
+                role = message.get(
+                    "role"
+                )
+
+                message_content = message.get(
+                    "content"
+                )
+
+                if role not in (
+                    "user",
+                    "assistant"
+                ):
+                    continue
+
+                if not isinstance(
+                    message_content,
+                    str
+                ):
+                    continue
+
+                message_content = (
+                    message_content.strip()
+                )
+
+                if not message_content:
+                    continue
+
+                clean_history.append(
+                    {
+                        "role": role,
+                        "content": message_content,
+                    }
+                )
+
+            # -------------------------------------------------
             # IMAGE
             # -------------------------------------------------
 
@@ -253,9 +320,15 @@ class handler(BaseHTTPRequestHandler):
 
             if image is not None:
 
-                if not isinstance(image, str):
+                if not isinstance(
+                    image,
+                    str
+                ):
                     self.send_json(
-                        {"error": "Invalid image data."},
+                        {
+                            "error":
+                                "Invalid image data."
+                        },
                         400
                     )
                     return
@@ -264,7 +337,10 @@ class handler(BaseHTTPRequestHandler):
                     "data:image/"
                 ):
                     self.send_json(
-                        {"error": "Invalid image format."},
+                        {
+                            "error":
+                                "Invalid image format."
+                        },
                         400
                     )
                     return
@@ -346,6 +422,29 @@ class handler(BaseHTTPRequestHandler):
                 )
 
             # -------------------------------------------------
+            # BUILD CONVERSATION FOR OPENROUTER
+            # -------------------------------------------------
+            #
+            # Previous user/assistant messages are sent first.
+            # The current question is appended as the newest
+            # user message.
+            #
+            # This allows the model to remember previous messages
+            # during the current chat session.
+            # -------------------------------------------------
+
+            openrouter_messages = list(
+                clean_history
+            )
+
+            openrouter_messages.append(
+                {
+                    "role": "user",
+                    "content": content,
+                }
+            )
+
+            # -------------------------------------------------
             # OPENROUTER CLIENT
             # -------------------------------------------------
 
@@ -375,7 +474,7 @@ class handler(BaseHTTPRequestHandler):
             if wants_stream:
                 self.stream_response(
                     client=client,
-                    content=content,
+                    messages=openrouter_messages,
                     image=image,
                     rate_result=rate_result
                 )
@@ -388,12 +487,7 @@ class handler(BaseHTTPRequestHandler):
             response = (
                 client.chat.completions.create(
                     model="qwen/qwen3.7-flash",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": content,
-                        }
-                    ],
+                    messages=openrouter_messages,
                 )
             )
 
@@ -462,7 +556,7 @@ class handler(BaseHTTPRequestHandler):
     def stream_response(
         self,
         client,
-        content,
+        messages,
         image,
         rate_result
     ):
@@ -523,6 +617,7 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(
                 b": connected\n\n"
             )
+
             self.wfile.flush()
 
             # -------------------------------------------------
@@ -531,12 +626,7 @@ class handler(BaseHTTPRequestHandler):
 
             stream = client.chat.completions.create(
                 model="qwen/qwen3.7-flash",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": content,
-                    }
-                ],
+                messages=messages,
                 stream=True,
             )
 
@@ -634,6 +724,7 @@ class handler(BaseHTTPRequestHandler):
                             ),
                         }
                     )
+
                 except Exception as sse_error:
                     print(
                         "SSE ERROR:",
@@ -654,6 +745,7 @@ class handler(BaseHTTPRequestHandler):
                         },
                         500
                     )
+
                 except Exception as response_error:
                     print(
                         "RESPONSE ERROR:",
@@ -722,6 +814,7 @@ class handler(BaseHTTPRequestHandler):
                 "AUTH ERROR: "
                 "Supabase environment variables missing"
             )
+
             return None
 
         try:
@@ -789,6 +882,7 @@ class handler(BaseHTTPRequestHandler):
                 "RATE LIMIT ERROR: "
                 "Supabase environment variables missing"
             )
+
             return None
 
         try:
@@ -846,6 +940,7 @@ class handler(BaseHTTPRequestHandler):
                         errors="replace"
                     )
                 )
+
             except Exception:
                 error_body = ""
 
