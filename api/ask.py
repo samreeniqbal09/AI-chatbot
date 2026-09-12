@@ -571,13 +571,6 @@ class handler(BaseHTTPRequestHandler):
             # -------------------------------------------------
             # SSE HEADERS
             # -------------------------------------------------
-            #
-            # Send the streaming headers BEFORE contacting
-            # OpenRouter. This lets the browser establish the
-            # SSE connection immediately and also means any
-            # OpenRouter failure can be returned as an SSE error
-            # instead of being converted into a generic JSON 500.
-            # -------------------------------------------------
 
             self.send_response(200)
 
@@ -612,8 +605,8 @@ class handler(BaseHTTPRequestHandler):
 
             stream_started = True
 
-            # Initial SSE comment helps establish and flush the
-            # connection before the model starts generating.
+            # Initial SSE comment helps establish and flush
+            # the connection before the model starts generating.
             self.wfile.write(
                 b": connected\n\n"
             )
@@ -707,11 +700,6 @@ class handler(BaseHTTPRequestHandler):
             # -------------------------------------------------
             # STREAM ERROR
             # -------------------------------------------------
-            #
-            # If SSE headers have already been sent, we cannot
-            # send another normal HTTP response. Send an SSE
-            # error event instead.
-            # -------------------------------------------------
 
             if stream_started:
                 try:
@@ -732,9 +720,6 @@ class handler(BaseHTTPRequestHandler):
                     )
 
             else:
-                # The OpenRouter request failed before the SSE
-                # response was started, so a normal JSON error
-                # response is still safe.
                 try:
                     self.send_json(
                         {
@@ -798,12 +783,17 @@ class handler(BaseHTTPRequestHandler):
 
     def verify_user(self, access_token):
 
-        supabase_url = os.environ.get(
-            "VITE_SUPABASE_URL"
+        # Prefer server-side environment variables.
+        # Keep VITE_* as fallback so the existing deployment
+        # configuration continues to work.
+        supabase_url = (
+            os.environ.get("SUPABASE_URL")
+            or os.environ.get("VITE_SUPABASE_URL")
         )
 
-        supabase_anon_key = os.environ.get(
-            "VITE_SUPABASE_ANON_KEY"
+        supabase_anon_key = (
+            os.environ.get("SUPABASE_ANON_KEY")
+            or os.environ.get("VITE_SUPABASE_ANON_KEY")
         )
 
         if (
@@ -831,6 +821,8 @@ class handler(BaseHTTPRequestHandler):
                         supabase_anon_key,
                     "Authorization":
                         f"Bearer {access_token}",
+                    "Accept":
+                        "application/json",
                 },
             )
 
@@ -839,16 +831,56 @@ class handler(BaseHTTPRequestHandler):
                 timeout=10
             ) as response:
 
+                response_body = response.read()
+
                 if response.status != 200:
+                    print(
+                        "AUTH ERROR: "
+                        f"Supabase returned "
+                        f"{response.status}"
+                    )
+
                     return None
 
                 user = json.loads(
-                    response.read()
+                    response_body
                 )
 
-                return user.get("id")
+                user_id = user.get("id")
+
+                if not user_id:
+                    print(
+                        "AUTH ERROR: "
+                        "Supabase returned no user id"
+                    )
+
+                    return None
+
+                return user_id
+
+        except urllib.error.HTTPError as error:
+
+            try:
+                error_body = (
+                    error.read()
+                    .decode(
+                        "utf-8",
+                        errors="replace"
+                    )
+                )
+            except Exception:
+                error_body = ""
+
+            print(
+                "AUTH HTTP ERROR:",
+                error.code,
+                error_body
+            )
+
+            return None
 
         except Exception as error:
+
             print(
                 "AUTH ERROR:",
                 repr(error)
@@ -866,12 +898,16 @@ class handler(BaseHTTPRequestHandler):
         user_id
     ):
 
-        supabase_url = os.environ.get(
-            "VITE_SUPABASE_URL"
+        # Prefer server-side environment variables.
+        # Keep VITE_* as fallback.
+        supabase_url = (
+            os.environ.get("SUPABASE_URL")
+            or os.environ.get("VITE_SUPABASE_URL")
         )
 
-        supabase_anon_key = os.environ.get(
-            "VITE_SUPABASE_ANON_KEY"
+        supabase_anon_key = (
+            os.environ.get("SUPABASE_ANON_KEY")
+            or os.environ.get("VITE_SUPABASE_ANON_KEY")
         )
 
         if (
